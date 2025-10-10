@@ -2,6 +2,11 @@ package com.example.mineguard;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import com.example.mineguard.alarm.AlarmFragment;
@@ -18,7 +23,25 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
+        WindowInsetsControllerCompat windowInsetsController = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (windowInsetsController != null) {
+            // 将状态栏图标和文字颜色设置为深色（黑色）
+            windowInsetsController.setAppearanceLightStatusBars(true);
+            // 将导航栏按钮颜色设置为深色（黑色）
+            windowInsetsController.setAppearanceLightNavigationBars(true);
+        }
+
+        // 设置 Insets 监听，避免内容与系统栏重叠
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
+            // 获取系统栏（状态栏和导航栏）的 Insets
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            // 为根视图设置 padding，使内容不与系统栏重叠
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            // 返回原始 insets，让子视图也能处理
+            return insets;
+        });
 
         // 初始化 Fragment
         fragments[0] = new HomeFragment();      // 数据统计
