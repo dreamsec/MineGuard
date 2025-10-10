@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // 初始化 Fragment
-        fragments[0] = new HomeFragment();      // 数据统计
+        fragments[0] = HomeFragment.newInstance();      // 数据统计
         fragments[1] = new AlarmFragment();     // 报警管理
         fragments[2] = new PreviewFragment();   // 实时预览
         fragments[3] = new ProfileFragment();   // 我的
