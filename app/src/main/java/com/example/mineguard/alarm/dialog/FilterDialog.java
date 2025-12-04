@@ -1,6 +1,5 @@
 package com.example.mineguard.alarm.dialog;
 
-import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,7 +11,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import com.example.mineguard.R;
-import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 /**
@@ -20,39 +18,31 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
  */
 public class FilterDialog extends BottomSheetDialogFragment {
     
-    private Spinner spinnerDevice;
-    private Spinner spinnerAlgorithm;
-    private Spinner spinnerScene;
-    private Spinner spinnerArea;
+    private Spinner spinnerAlarmType;
+    private Spinner spinnerAlarmLevel;
     private Spinner spinnerStatus;
-    private Spinner spinnerTimeRange;
+    private Spinner spinnerLocation;
     private Button btnReset;
     private Button btnConfirm;
     
-    private String selectedDevice;
-    private String selectedAlgorithm;
-    private String selectedScene;
-    private String selectedArea;
+    private String selectedAlarmType;
+    private String selectedAlarmLevel;
     private String selectedStatus;
-    private String selectedTimeRange;
+    private String selectedLocation;
     
     private OnFilterChangeListener listener;
 
     public interface OnFilterChangeListener {
-        void onFilterChanged(String device, String algorithm, String scene, 
-                           String area, String status, String timeRange);
+        void onFilterChanged(String alarmType, String alarmLevel, String status, String location);
     }
 
-    public static FilterDialog newInstance(String device, String algorithm, String scene, 
-                                         String area, String status, String timeRange) {
+    public static FilterDialog newInstance(String alarmType, String alarmLevel, String status, String location) {
         FilterDialog dialog = new FilterDialog();
         Bundle args = new Bundle();
-        args.putString("device", device);
-        args.putString("algorithm", algorithm);
-        args.putString("scene", scene);
-        args.putString("area", area);
+        args.putString("alarmType", alarmType);
+        args.putString("alarmLevel", alarmLevel);
         args.putString("status", status);
-        args.putString("timeRange", timeRange);
+        args.putString("location", location);
         dialog.setArguments(args);
         return dialog;
     }
@@ -62,12 +52,10 @@ public class FilterDialog extends BottomSheetDialogFragment {
         super.onCreate(savedInstanceState);
         Bundle args = getArguments();
         if (args != null) {
-            selectedDevice = args.getString("device", "");
-            selectedAlgorithm = args.getString("algorithm", "");
-            selectedScene = args.getString("scene", "");
-            selectedArea = args.getString("area", "");
+            selectedAlarmType = args.getString("alarmType", "");
+            selectedAlarmLevel = args.getString("alarmLevel", "");
             selectedStatus = args.getString("status", "");
-            selectedTimeRange = args.getString("timeRange", "");
+            selectedLocation = args.getString("location", "");
         }
     }
 
@@ -85,88 +73,66 @@ public class FilterDialog extends BottomSheetDialogFragment {
     }
 
     private void initViews(View view) {
-        spinnerDevice = view.findViewById(R.id.spinnerDevice);
-        spinnerAlgorithm = view.findViewById(R.id.spinnerAlgorithm);
-        spinnerScene = view.findViewById(R.id.spinnerScene);
-        spinnerArea = view.findViewById(R.id.spinnerArea);
+        spinnerAlarmType = view.findViewById(R.id.spinnerAlarmType);
+        spinnerAlarmLevel = view.findViewById(R.id.spinnerAlarmLevel);
         spinnerStatus = view.findViewById(R.id.spinnerStatus);
-        spinnerTimeRange = view.findViewById(R.id.spinnerTimeRange);
+        spinnerLocation = view.findViewById(R.id.spinnerLocation);
         btnReset = view.findViewById(R.id.btnReset);
         btnConfirm = view.findViewById(R.id.btnConfirm);
     }
 
     private void setupSpinners() {
-        // 设备名称
-        String[] devices = {"全部", "掘进机A1", "采煤机B2", "运输机C3", "风机D4", "水泵E5"};
-        ArrayAdapter<String> deviceAdapter = new ArrayAdapter<>(requireContext(), 
-                android.R.layout.simple_spinner_item, devices);
-        deviceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerDevice.setAdapter(deviceAdapter);
+        // 报警类型
+        String[] alarmTypes = {"全部", "人员入侵", "余煤检测", "旋转器检测", "挂钩检测分割版"};
+        ArrayAdapter<String> typeAdapter = new ArrayAdapter<>(requireContext(), 
+                android.R.layout.simple_spinner_item, alarmTypes);
+        typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerAlarmType.setAdapter(typeAdapter);
         
-        // 算法类型
-        String[] algorithms = {"全部", "人员检测", "设备异常", "瓦斯超标", "温度异常", "振动异常"};
-        ArrayAdapter<String> algorithmAdapter = new ArrayAdapter<>(requireContext(), 
-                android.R.layout.simple_spinner_item, algorithms);
-        algorithmAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerAlgorithm.setAdapter(algorithmAdapter);
-        
-        // 场景
-        String[] scenes = {"全部", "采煤工作面", "掘进工作面", "运输巷道", "通风系统", "排水系统"};
-        ArrayAdapter<String> sceneAdapter = new ArrayAdapter<>(requireContext(), 
-                android.R.layout.simple_spinner_item, scenes);
-        sceneAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerScene.setAdapter(sceneAdapter);
-        
-        // 区域
-        String[] areas = {"全部", "东区", "西区", "南区", "北区", "中央区"};
-        ArrayAdapter<String> areaAdapter = new ArrayAdapter<>(requireContext(), 
-                android.R.layout.simple_spinner_item, areas);
-        areaAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerArea.setAdapter(areaAdapter);
+        // 报警等级
+        String[] alarmLevels = {"全部", "警告", "严重"};
+        ArrayAdapter<String> levelAdapter = new ArrayAdapter<>(requireContext(), 
+                android.R.layout.simple_spinner_item, alarmLevels);
+        levelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerAlarmLevel.setAdapter(levelAdapter);
         
         // 处理状态
-        String[] statuses = {"全部", "未处理", "处理中", "已处理"};
+        String[] statuses = {"全部", "未处理", "已处理"};
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(requireContext(), 
                 android.R.layout.simple_spinner_item, statuses);
         statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerStatus.setAdapter(statusAdapter);
         
-        // 时间范围
-        String[] timeRanges = {"全部", "最近1小时", "最近6小时", "最近24小时", "最近3天", "最近7天"};
-        ArrayAdapter<String> timeRangeAdapter = new ArrayAdapter<>(requireContext(), 
-                android.R.layout.simple_spinner_item, timeRanges);
-        timeRangeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerTimeRange.setAdapter(timeRangeAdapter);
+        // 报警位置
+        String[] locations = {"全部", "矿井1", "矿井2", "矿井3"};
+        ArrayAdapter<String> locationAdapter = new ArrayAdapter<>(requireContext(), 
+                android.R.layout.simple_spinner_item, locations);
+        locationAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerLocation.setAdapter(locationAdapter);
     }
 
     private void setupClickListeners() {
         btnReset.setOnClickListener(v -> {
-            spinnerDevice.setSelection(0);
-            spinnerAlgorithm.setSelection(0);
-            spinnerScene.setSelection(0);
-            spinnerArea.setSelection(0);
+            spinnerAlarmType.setSelection(0);
+            spinnerAlarmLevel.setSelection(0);
             spinnerStatus.setSelection(0);
-            spinnerTimeRange.setSelection(0);
+            spinnerLocation.setSelection(0);
         });
         
         btnConfirm.setOnClickListener(v -> {
-            String device = spinnerDevice.getSelectedItem().toString();
-            String algorithm = spinnerAlgorithm.getSelectedItem().toString();
-            String scene = spinnerScene.getSelectedItem().toString();
-            String area = spinnerArea.getSelectedItem().toString();
+            String alarmType = spinnerAlarmType.getSelectedItem().toString();
+            String alarmLevel = spinnerAlarmLevel.getSelectedItem().toString();
             String status = spinnerStatus.getSelectedItem().toString();
-            String timeRange = spinnerTimeRange.getSelectedItem().toString();
+            String location = spinnerLocation.getSelectedItem().toString();
             
             // 转换"全部"为空字符串
-            device = "全部".equals(device) ? "" : device;
-            algorithm = "全部".equals(algorithm) ? "" : algorithm;
-            scene = "全部".equals(scene) ? "" : scene;
-            area = "全部".equals(area) ? "" : area;
+            alarmType = "全部".equals(alarmType) ? "" : alarmType;
+            alarmLevel = "全部".equals(alarmLevel) ? "" : alarmLevel;
             status = "全部".equals(status) ? "" : status;
-            timeRange = "全部".equals(timeRange) ? "" : timeRange;
+            location = "全部".equals(location) ? "" : location;
             
             if (listener != null) {
-                listener.onFilterChanged(device, algorithm, scene, area, status, timeRange);
+                listener.onFilterChanged(alarmType, alarmLevel, status, location);
             }
             dismiss();
         });
@@ -174,23 +140,17 @@ public class FilterDialog extends BottomSheetDialogFragment {
 
     private void setSelectedValues() {
         // 设置之前选择的值
-        if (!selectedDevice.isEmpty()) {
-            setSpinnerSelection(spinnerDevice, selectedDevice);
+        if (!selectedAlarmType.isEmpty()) {
+            setSpinnerSelection(spinnerAlarmType, selectedAlarmType);
         }
-        if (!selectedAlgorithm.isEmpty()) {
-            setSpinnerSelection(spinnerAlgorithm, selectedAlgorithm);
-        }
-        if (!selectedScene.isEmpty()) {
-            setSpinnerSelection(spinnerScene, selectedScene);
-        }
-        if (!selectedArea.isEmpty()) {
-            setSpinnerSelection(spinnerArea, selectedArea);
+        if (!selectedAlarmLevel.isEmpty()) {
+            setSpinnerSelection(spinnerAlarmLevel, selectedAlarmLevel);
         }
         if (!selectedStatus.isEmpty()) {
             setSpinnerSelection(spinnerStatus, selectedStatus);
         }
-        if (!selectedTimeRange.isEmpty()) {
-            setSpinnerSelection(spinnerTimeRange, selectedTimeRange);
+        if (!selectedLocation.isEmpty()) {
+            setSpinnerSelection(spinnerLocation, selectedLocation);
         }
     }
 

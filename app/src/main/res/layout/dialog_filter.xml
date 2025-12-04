@@ -2,151 +2,117 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
     android:background="@android:color/white"
+    android:orientation="vertical"
     android:padding="16dp">
 
     <!-- 标题 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="筛选条件"
-        android:textSize="18sp"
-        android:textColor="#212121"
-        android:textStyle="bold"
+        android:layout_marginBottom="16dp"
         android:gravity="center"
-        android:layout_marginBottom="16dp" />
+        android:text="筛选条件"
+        android:textColor="#212121"
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
-    <!-- 设备名称 -->
+    <!-- 报警类型 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="设备名称"
-        android:textSize="14sp"
-        android:textColor="#424242"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="4dp"
+        android:text="报警类型"
+        android:textColor="#424242"
+        android:textSize="14sp" />
 
     <Spinner
-        android:id="@+id/spinnerDevice"
+        android:id="@+id/spinnerAlarmType"
         android:layout_width="match_parent"
         android:layout_height="40dp"
-        android:background="@drawable/bg_spinner"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_spinner" />
 
-    <!-- 算法类型 -->
+    <!-- 报警等级 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="算法类型"
-        android:textSize="14sp"
-        android:textColor="#424242"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="4dp"
+        android:text="报警等级"
+        android:textColor="#424242"
+        android:textSize="14sp" />
 
     <Spinner
-        android:id="@+id/spinnerAlgorithm"
+        android:id="@+id/spinnerAlarmLevel"
         android:layout_width="match_parent"
         android:layout_height="40dp"
-        android:background="@drawable/bg_spinner"
-        android:layout_marginBottom="12dp" />
-
-    <!-- 场景 -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="场景"
-        android:textSize="14sp"
-        android:textColor="#424242"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
-
-    <Spinner
-        android:id="@+id/spinnerScene"
-        android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:background="@drawable/bg_spinner"
-        android:layout_marginBottom="12dp" />
-
-    <!-- 区域 -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="区域"
-        android:textSize="14sp"
-        android:textColor="#424242"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
-
-    <Spinner
-        android:id="@+id/spinnerArea"
-        android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:background="@drawable/bg_spinner"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_spinner" />
 
     <!-- 处理状态 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="处理状态"
-        android:textSize="14sp"
-        android:textColor="#424242"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="4dp"
+        android:text="处理状态"
+        android:textColor="#424242"
+        android:textSize="14sp" />
 
     <Spinner
         android:id="@+id/spinnerStatus"
         android:layout_width="match_parent"
         android:layout_height="40dp"
-        android:background="@drawable/bg_spinner"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_spinner" />
 
-    <!-- 时间范围 -->
+    <!-- 报警位置 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="时间范围"
-        android:textSize="14sp"
-        android:textColor="#424242"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="4dp"
+        android:text="报警位置"
+        android:textColor="#424242"
+        android:textSize="14sp" />
 
     <Spinner
-        android:id="@+id/spinnerTimeRange"
+        android:id="@+id/spinnerLocation"
         android:layout_width="match_parent"
         android:layout_height="40dp"
-        android:background="@drawable/bg_spinner"
-        android:layout_marginBottom="20dp" />
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/bg_spinner" />
 
     <!-- 按钮区域 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center">
+        android:gravity="center"
+        android:orientation="horizontal">
 
         <Button
             android:id="@+id/btnReset"
             android:layout_width="0dp"
             android:layout_height="40dp"
-            android:layout_weight="1"
             android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_button_outline"
             android:text="重置"
-            android:textSize="14sp"
             android:textColor="#757575"
-            android:background="@drawable/bg_button_outline" />
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/btnConfirm"
             android:layout_width="0dp"
             android:layout_height="40dp"
-            android:layout_weight="1"
             android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_button_primary"
             android:text="确认"
-            android:textSize="14sp"
-            android:textColor="@android:color/white"
-            android:background="@drawable/bg_button_primary" />
+            android:textColor="#757575"
+            android:textSize="14sp" />
 
     </LinearLayout>
 

@@ -6,109 +6,150 @@ import java.io.Serializable;
  * 报警数据模型
  */
 public class AlarmItem implements Serializable {
-    public static final int LEVEL_WARNING = 1;  // 警告级别
-    public static final int LEVEL_CRITICAL = 2; // 严重级别
+    public static final int STATUS_UNPROCESSED = 0;  // 未处理
+    public static final int STATUS_PROCESSED = 1;    // 已处理
+    public static final String LEVEL_WARNING = "0";  // 警告级别
+    public static final String LEVEL_CRITICAL = "1"; // 严重级别
 
-    private String id;
-    private String deviceName;
-    private String algorithmType;
-    private String scene;
-    private String area;
-    private String status;
-    private int level;
-    private long timestamp;
-    private int imageRes;
-    private String processInfo;
-    private String processor;
-    private long processTime;
+    private int id;               // 报警ID
+    private String channel;       // 报警通道
+    private String type;          // 报警类型
+    private String level;         // 报警等级
+    private String path;          // 图片相对路径
+    private String video_path;    // 视频相对路径
+    private String[] video_paths; // 视频路径列表
+    private int status;           // 处理状态（0=未处理，1=已处理）
+    private Integer camera_id;    // 关联摄像机ID
+    private String url;           // 摄像机RTSP流地址
+    private String solve_time;    // 解决时间
+    private String ip;            // 摄像机IP（camera_id有效时返回）
+    private String name;          // 摄像机名称（camera_id有效时返回）
+    private String location;      // 摄像机位置（camera_id有效时返回）
+    private String flow;          // 摄像机流地址（camera_id有效时返回）
+    private String processInfo;   // 保留处理信息
 
     public AlarmItem() {
     }
 
-    public AlarmItem(String id, String deviceName, String algorithmType, String scene, 
-                    String area, String status, int level, long timestamp, int imageRes) {
-        this.id = id;
-        this.deviceName = deviceName;
-        this.algorithmType = algorithmType;
-        this.scene = scene;
-        this.area = area;
-        this.status = status;
-        this.level = level;
-        this.timestamp = timestamp;
-        this.imageRes = imageRes;
-    }
-
     // Getters and Setters
-    public String getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(int id) {
         this.id = id;
     }
 
-    public String getDeviceName() {
-        return deviceName;
+    public String getChannel() {
+        return channel;
     }
 
-    public void setDeviceName(String deviceName) {
-        this.deviceName = deviceName;
+    public void setChannel(String channel) {
+        this.channel = channel;
     }
 
-    public String getAlgorithmType() {
-        return algorithmType;
+    public String getType() {
+        return type;
     }
 
-    public void setAlgorithmType(String algorithmType) {
-        this.algorithmType = algorithmType;
+    public void setType(String type) {
+        this.type = type;
     }
 
-    public String getScene() {
-        return scene;
-    }
-
-    public void setScene(String scene) {
-        this.scene = scene;
-    }
-
-    public String getArea() {
-        return area;
-    }
-
-    public void setArea(String area) {
-        this.area = area;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public int getLevel() {
+    public String getLevel() {
         return level;
     }
 
-    public void setLevel(int level) {
+    public void setLevel(String level) {
         this.level = level;
     }
 
-    public long getTimestamp() {
-        return timestamp;
+    public String getPath() {
+        return path;
     }
 
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
+    public void setPath(String path) {
+        this.path = path;
     }
 
-    public int getImageRes() {
-        return imageRes;
+    public String getVideo_path() {
+        return video_path;
     }
 
-    public void setImageRes(int imageRes) {
-        this.imageRes = imageRes;
+    public void setVideo_path(String video_path) {
+        this.video_path = video_path;
+    }
+
+    public String[] getVideo_paths() {
+        return video_paths;
+    }
+
+    public void setVideo_paths(String[] video_paths) {
+        this.video_paths = video_paths;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public Integer getCamera_id() {
+        return camera_id;
+    }
+
+    public void setCamera_id(Integer camera_id) {
+        this.camera_id = camera_id;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getSolve_time() {
+        return solve_time;
+    }
+
+    public void setSolve_time(String solve_time) {
+        this.solve_time = solve_time;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getFlow() {
+        return flow;
+    }
+
+    public void setFlow(String flow) {
+        this.flow = flow;
     }
 
     public String getProcessInfo() {
@@ -119,61 +160,45 @@ public class AlarmItem implements Serializable {
         this.processInfo = processInfo;
     }
 
-    public String getProcessor() {
-        return processor;
-    }
-
-    public void setProcessor(String processor) {
-        this.processor = processor;
-    }
-
-    public long getProcessTime() {
-        return processTime;
-    }
-
-    public void setProcessTime(long processTime) {
-        this.processTime = processTime;
-    }
-
     /**
      * 获取级别描述
      */
     public String getLevelDescription() {
-        return level == LEVEL_CRITICAL ? "严重" : "警告";
+        return LEVEL_CRITICAL.equals(level) ? "严重" : "警告";
     }
 
     /**
      * 获取级别颜色
      */
     public int getLevelColor() {
-        return level == LEVEL_CRITICAL ? 0xFFFF4444 : 0xFFFFA726; // 红色或橙色
+        return LEVEL_CRITICAL.equals(level) ? 0xFFFF4444 : 0xFFFFA726; // 红色或橙色
     }
 
     /**
      * 是否为严重报警
      */
     public boolean isCritical() {
-        return level == LEVEL_CRITICAL;
+        return LEVEL_CRITICAL.equals(level);
     }
 
     /**
      * 是否已处理
      */
     public boolean isProcessed() {
-        return "已处理".equals(status);
-    }
-
-    /**
-     * 是否处理中
-     */
-    public boolean isProcessing() {
-        return "处理中".equals(status);
+        return status == STATUS_PROCESSED;
     }
 
     /**
      * 是否未处理
      */
     public boolean isUnprocessed() {
-        return "未处理".equals(status);
+        return status == STATUS_UNPROCESSED;
+    }
+    
+    /**
+     * 获取状态描述
+     */
+    public String getStatusDescription() {
+        return status == STATUS_PROCESSED ? "已处理" : "未处理";
     }
 }

@@ -76,30 +76,30 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.AlarmViewHol
         }
 
         public void bind(AlarmItem alarm) {
-            // 设置图片
-            imageView.setImageResource(alarm.getImageRes());
+            // 设置图片 - 使用项目中已存在的图标
+            imageView.setImageResource(R.drawable.ic_alarm_empty);
             
             // 设置级别
             tvLevel.setText(alarm.getLevelDescription());
             tvLevel.setTextColor(alarm.getLevelColor());
             levelIndicator.setBackgroundColor(alarm.getLevelColor());
             
-            // 设置设备名称
-            tvDeviceName.setText(alarm.getDeviceName());
+            // 1. 设置报警ID
+            tvDeviceName.setText("报警ID：" + alarm.getId());
             
-            // 设置算法类型
-            tvAlgorithmType.setText(alarm.getAlgorithmType());
+            // 2. 设置报警类型
+            tvAlgorithmType.setText("报警类型：" + (alarm.getType() != null ? alarm.getType() : "未知类型"));
             
-            // 设置场景
-            tvScene.setText(alarm.getScene());
+            // 3. 设置位置信息
+            tvScene.setText("位置信息：" + (alarm.getLocation() != null ? alarm.getLocation() : "未知位置"));
             
-            // 设置时间
-            String timeStr = dateFormat.format(new Date(alarm.getTimestamp()));
-            tvTime.setText(timeStr);
+            // 4. 设置设备IP地址
+            tvTime.setText("设备IP地址：" + (alarm.getIp() != null && !alarm.getIp().isEmpty() ? alarm.getIp() : "未知IP"));
             
-            // 设置状态
-            tvStatus.setText(alarm.getStatus());
-            setStatusStyle(tvStatus, alarm.getStatus());
+            // 设置状态 - 使用重构后的status字段
+            String statusText = alarm.isProcessed() ? "已处理" : "未处理";
+            tvStatus.setText(statusText);
+            setStatusStyle(tvStatus, statusText);
             
             // 设置点击事件
             itemView.setOnClickListener(v -> {
@@ -128,7 +128,7 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.AlarmViewHol
                     tvStatus.setBackgroundResource(R.drawable.bg_status_processing);
                     break;
                 case "已处理":
-                    tvStatus.setTextColor(0xFF66BB6A); // 绿色
+                    tvStatus.setTextColor(0xFF2E7D32); // 深绿色文字，提高在浅绿背景上的可读性
                     tvStatus.setBackgroundResource(R.drawable.bg_status_processed);
                     break;
                 default:

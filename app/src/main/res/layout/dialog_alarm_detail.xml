@@ -83,7 +83,7 @@
 
             </LinearLayout>
 
-            <!-- 设备名称 -->
+            <!-- 报警ID -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -93,7 +93,7 @@
                 <TextView
                     android:layout_width="80dp"
                     android:layout_height="wrap_content"
-                    android:text="设备名称:"
+                    android:text="报警ID:"
                     android:textSize="14sp"
                     android:textColor="#757575" />
 
@@ -102,13 +102,13 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="掘进机A1"
+                    android:text="001"
                     android:textSize="14sp"
                     android:textColor="#212121" />
 
             </LinearLayout>
 
-            <!-- 算法类型 -->
+            <!-- 报警类型 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -118,7 +118,7 @@
                 <TextView
                     android:layout_width="80dp"
                     android:layout_height="wrap_content"
-                    android:text="算法类型:"
+                    android:text="报警类型:"
                     android:textSize="14sp"
                     android:textColor="#757575" />
 
@@ -133,7 +133,7 @@
 
             </LinearLayout>
 
-            <!-- 场景 -->
+            <!-- 关联摄像头 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -143,7 +143,7 @@
                 <TextView
                     android:layout_width="80dp"
                     android:layout_height="wrap_content"
-                    android:text="场景:"
+                    android:text="关联摄像头:"
                     android:textSize="14sp"
                     android:textColor="#757575" />
 
@@ -152,13 +152,13 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="采煤工作面"
+                    android:text="摄像头1"
                     android:textSize="14sp"
                     android:textColor="#212121" />
 
             </LinearLayout>
 
-            <!-- 区域 -->
+            <!-- 位置信息 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -168,7 +168,7 @@
                 <TextView
                     android:layout_width="80dp"
                     android:layout_height="wrap_content"
-                    android:text="区域:"
+                    android:text="位置信息:"
                     android:textSize="14sp"
                     android:textColor="#757575" />
 
@@ -183,7 +183,7 @@
 
             </LinearLayout>
 
-            <!-- 报警时间 -->
+            <!-- 设备IP地址 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -192,7 +192,7 @@
                 <TextView
                     android:layout_width="80dp"
                     android:layout_height="wrap_content"
-                    android:text="报警时间:"
+                    android:text="设备IP地址:"
                     android:textSize="14sp"
                     android:textColor="#757575" />
 
@@ -201,7 +201,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="2024-10-17 15:30:25"
+                    android:text="192.168.0.100"
                     android:textSize="14sp"
                     android:textColor="#212121" />
 

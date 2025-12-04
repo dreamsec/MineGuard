@@ -3,6 +3,7 @@ package com.example.mineguard.alarm.dialog;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.LayoutInflater;
@@ -18,10 +19,18 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import com.example.mineguard.R;
 import com.example.mineguard.alarm.model.AlarmItem;
+import com.bumptech.glide.Glide;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import static com.example.mineguard.MyApplication.globalIP;
+import com.bumptech.glide.Glide;
+import java.io.File;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.util.Log;
+import androidx.core.content.ContextCompat;
 
 /**
  * 报警详情对话框
@@ -94,29 +103,59 @@ public class AlarmDetailDialog extends DialogFragment {
         btnExport = view.findViewById(R.id.btnExport);
         btnClose = view.findViewById(R.id.btnClose);
     }
-
+    
+    // 在setupData方法中修改图片加载逻辑
     private void setupData() {
         if (alarm == null) return;
         
-        // 设置图片
-        imageView.setImageResource(alarm.getImageRes());
+        // 设置图片 - 从AlarmItem的path属性加载，添加前缀
+        String path = alarm.getPath();
+        if (path != null && !path.isEmpty()) {
+            // 构建完整的图片URL
+            String imageUrl = "http://" + globalIP + ":5004/data/media/" + path;
+            
+            // 使用Glide加载图片
+            Glide.with(this)
+                 .load(imageUrl)
+                 .placeholder(android.R.drawable.ic_dialog_alert) // 加载占位图
+                 .error(android.R.drawable.ic_dialog_alert) // 错误占位图
+                 .into(imageView);
+        } else {
+            // 如果没有路径，使用默认图标
+            imageView.setImageResource(android.R.drawable.ic_dialog_alert);
+        }
         
         // 设置基本信息
         tvLevel.setText(alarm.getLevelDescription());
         tvLevel.setTextColor(alarm.getLevelColor());
+        // 根据警告级别设置背景样式
+        if (alarm.isCritical()) {
+            tvLevel.setBackgroundResource(R.drawable.bg_level_critical); // 严重级别 - 红色边框
+        } else {
+            tvLevel.setBackgroundResource(R.drawable.bg_level_warning); // 警告级别 - 橙色边框
+        }
         
-        tvDeviceName.setText(alarm.getDeviceName());
-        tvAlgorithmType.setText(alarm.getAlgorithmType());
-        tvScene.setText(alarm.getScene());
-        tvArea.setText(alarm.getArea());
+        // 1. 报警ID：对应AlarmItem的id属性
+        tvDeviceName.setText(String.valueOf(alarm.getId()));
         
-        // 设置时间
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-        tvTime.setText(dateFormat.format(new Date(alarm.getTimestamp())));
+        // 2. 报警类型：对应AlarmItem的type属性
+        tvAlgorithmType.setText(alarm.getType() != null ? alarm.getType() : "未知类型");
+        
+        // 3. 关联摄像头：对应AlarmItem的camera_id属性
+        Integer cameraId = alarm.getCamera_id();
+        tvScene.setText(cameraId != null ? "摄像头" + cameraId : "未知摄像头");
+        
+        // 4. 位置信息：对应AlarmItem的location属性
+        tvArea.setText(alarm.getLocation() != null ? alarm.getLocation() : "未知位置");
+        
+        // 5. 设备IP地址：对应AlarmItem的ip属性
+        tvTime.setText(alarm.getIp() != null ? alarm.getIp() : "未知IP地址");
         
         // 设置状态
-        tvStatus.setText(alarm.getStatus());
-        setStatusStyle(tvStatus, alarm.getStatus());
+        int statusValue = alarm.getStatus();
+        String statusText = statusValue == 0 ? "未处理" : "已处理";
+        tvStatus.setText(statusText);
+        setStatusStyle(tvStatus, statusText);
         
         // 设置处理信息
         if (alarm.getProcessInfo() != null && !alarm.getProcessInfo().isEmpty()) {
@@ -131,16 +170,16 @@ public class AlarmDetailDialog extends DialogFragment {
         }
         
         // 设置处理人
-        if (alarm.getProcessor() != null && !alarm.getProcessor().isEmpty()) {
-            tvProcessor.setText("处理人: " + alarm.getProcessor());
+        if (alarm.getProcessInfo() != null && !alarm.getProcessInfo().isEmpty()) {
+            tvProcessor.setText("处理信息: " + alarm.getProcessInfo());
             tvProcessor.setVisibility(View.VISIBLE);
         } else {
             tvProcessor.setVisibility(View.GONE);
         }
         
         // 设置处理时间
-        if (alarm.getProcessTime() > 0) {
-            String processTimeStr = dateFormat.format(new Date(alarm.getProcessTime()));
+        if (alarm.getSolve_time() != null && !alarm.getSolve_time().isEmpty()) {
+            String processTimeStr = alarm.getSolve_time();
             tvProcessTime.setText("处理时间: " + processTimeStr);
             tvProcessTime.setVisibility(View.VISIBLE);
         } else {
@@ -151,16 +190,18 @@ public class AlarmDetailDialog extends DialogFragment {
     private void setStatusStyle(TextView tvStatus, String status) {
         switch (status) {
             case "未处理":
-                tvStatus.setTextColor(0xFFFF5252); // 红色
+                tvStatus.setTextColor(0xFFFF5252); // 红色文字
+                tvStatus.setBackgroundResource(R.drawable.bg_status_unprocessed); // 红色边框
                 break;
             case "处理中":
-                tvStatus.setTextColor(0xFFFFA726); // 橙色
+                tvStatus.setTextColor(0xFFFFA726); // 橙色文字
                 break;
             case "已处理":
-                tvStatus.setTextColor(0xFF66BB6A); // 绿色
+                tvStatus.setTextColor(0xFF66BB6A); // 绿色文字
+                tvStatus.setBackgroundResource(R.drawable.bg_status_processed); // 绿色边框
                 break;
             default:
-                tvStatus.setTextColor(0xFF757575); // 灰色
+                tvStatus.setTextColor(0xFF757575); // 灰色文字
                 break;
         }
     }
@@ -185,10 +226,10 @@ public class AlarmDetailDialog extends DialogFragment {
         }
         
         // 更新报警信息
-        alarm.setProcessInfo(processInfo);
-        alarm.setProcessor("当前用户"); // 这里应该获取实际的用户名
-        alarm.setProcessTime(System.currentTimeMillis());
-        alarm.setStatus("已处理");
+        alarm.setProcessInfo("当前用户: " + etProcessInfo.getText().toString()); // 设置处理信息，包含用户名和处理内容
+        alarm.setProcessInfo("当前用户"); // 使用setProcessInfo替代不存在的setProcessor
+        alarm.setSolve_time(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(System.currentTimeMillis()))); // 使用setSolve_time替代不存在的setProcessTime
+        alarm.setStatus(AlarmItem.STATUS_PROCESSED); // 使用常量替代字符串
         
         // 刷新显示
         setupData();
@@ -196,50 +237,71 @@ public class AlarmDetailDialog extends DialogFragment {
         Toast.makeText(getContext(), "处理信息已保存", Toast.LENGTH_SHORT).show();
     }
 
+    private static final int REQUEST_STORAGE_PERMISSION = 1;
+
     private void exportImage() {
+        // 检查并请求存储权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !hasStoragePermission()) {
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_STORAGE_PERMISSION);
+            return;
+        }
+    
         try {
-            // 创建下载管理器
-            DownloadManager downloadManager = (DownloadManager) requireContext().getSystemService(Context.DOWNLOAD_SERVICE);
-            
-            // 生成文件名
-            String fileName = "alarm_" + alarm.getId() + "_" + System.currentTimeMillis() + ".jpg";
-            
-            // 创建下载请求
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse("android.resource://" + requireContext().getPackageName() + "/" + alarm.getImageRes()));
-            request.setTitle("报警图片导出");
-            request.setDescription("导出报警图片到本地");
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_PICTURES, fileName);
-            
-            // 开始下载
-            downloadManager.enqueue(request);
-            
-            Toast.makeText(getContext(), "图片导出中，请查看通知栏", Toast.LENGTH_SHORT).show();
-            
+            String path = alarm.getPath();
+            if (path != null && !path.isEmpty()) {
+                // 构建完整的图片URL用于导出
+                String imageUrl = "http://" + globalIP + ":5004/data/media/" + path;
+                
+                DownloadManager downloadManager = (DownloadManager) requireContext().getSystemService(Context.DOWNLOAD_SERVICE);
+                String fileName = "alarm_" + alarm.getId() + "_" + System.currentTimeMillis() + ".jpg";
+                
+                // 优化DownloadManager请求配置
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(imageUrl));
+                request.setTitle("报警图片导出");
+                request.setDescription("导出报警图片到本地");
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_PICTURES, fileName);
+                request.setAllowedOverMetered(true);  // 允许在计量网络下下载
+                request.setAllowedOverRoaming(true);  // 允许在漫游网络下下载
+                request.setMimeType("image/jpeg");   // 设置MIME类型
+                
+                // 开始下载
+                long downloadId = downloadManager.enqueue(request);
+                Toast.makeText(getContext(), "图片导出中，请查看通知栏", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getContext(), "没有可导出的图片", Toast.LENGTH_SHORT).show();
+            }
         } catch (Exception e) {
-            // 如果下载管理器方式失败，尝试其他方式
-            exportImageAlternative();
+            Log.e("AlarmDetailDialog", "导出图片失败", e);
+            Toast.makeText(getContext(), "图片导出失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
-
-    private void exportImageAlternative() {
-        try {
-            // 创建图片目录
-            File picturesDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "MineGuard");
-            if (!picturesDir.exists()) {
-                picturesDir.mkdirs();
+    
+    // 检查是否有存储权限
+    private boolean hasStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11及以上版本
+            return Environment.isExternalStorageManager();
+        } else {
+            // Android 10及以下版本
+            return ContextCompat.checkSelfPermission(requireContext(),
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        }
+    }
+    
+    // 处理权限请求结果
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                     @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_STORAGE_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限被授予，再次尝试导出
+                exportImage();
+            } else {
+                Toast.makeText(getContext(), "需要存储权限才能导出图片", Toast.LENGTH_SHORT).show();
             }
-            
-            // 生成文件名
-            String fileName = "alarm_" + alarm.getId() + "_" + System.currentTimeMillis() + ".jpg";
-            File outputFile = new File(picturesDir, fileName);
-            
-            // 这里应该实现实际的图片保存逻辑
-            // 由于是示例，我们只显示成功消息
-            Toast.makeText(getContext(), "图片已保存到: " + outputFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-            
-        } catch (Exception e) {
-            Toast.makeText(getContext(), "图片导出失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
