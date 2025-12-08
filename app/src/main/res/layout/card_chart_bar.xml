@@ -37,7 +37,6 @@
                 android:orientation="horizontal"
                 android:background="@drawable/time_span_background"
                 android:padding="4dp">
-
                 <TextView
                     android:id="@+id/tv_time_one_week"
                     android:layout_width="wrap_content"
@@ -46,7 +45,6 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:padding="8dp" />
-
                 <TextView
                     android:id="@+id/tv_time_one_month"
                     android:layout_width="wrap_content"
@@ -55,16 +53,23 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:padding="8dp" />
-
             </LinearLayout>
-
         </LinearLayout>
 
-        <com.github.mikephil.charting.charts.HorizontalBarChart
-            android:id="@+id/bar_chart"
+        <com.example.mineguard.home.RadialRankingView
+            android:id="@+id/radial_ranking_view"
+            android:layout_width="240dp"
+            android:layout_height="240dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"/>
+
+        <LinearLayout
+            android:id="@+id/ll_ranking_legend"
             android:layout_width="match_parent"
-            android:layout_height="300dp" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:divider="@drawable/divider_transparent_8dp"
+            android:showDividers="middle" />
 
     </LinearLayout>
-
 </androidx.cardview.widget.CardView>

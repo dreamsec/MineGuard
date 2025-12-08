@@ -10,6 +10,7 @@
     
     <!-- Statistics colors -->
     <color name="primary_blue">#2196F3</color>
+    <color name="primary_blue_dark">#1565C0</color>
     <color name="primary_green">#4CAF50</color>
     <color name="primary_orange">#FF9800</color>
     <color name="primary_red">#F44336</color>
@@ -20,4 +21,9 @@
     <color name="text_secondary">#757575</color>
     <color name="text_color">#FFFFFF</color>
     <color name="divider">#E0E0E0</color>
+    <color name="chart_purple_primary">#4F46E5</color>
+    <color name="chart_purple_start">#804F46E5</color>
+    <color name="chart_purple_end">#104F46E5</color>
+    <color name="chart_grid_line">#E0E0E0</color>
+    <color name="chart_text_color">#999999</color>
 </resources>

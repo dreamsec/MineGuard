@@ -2,12 +2,16 @@ package com.example.mineguard.home;
 import static com.example.mineguard.MyApplication.globalIP;
 
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.widget.LinearLayout;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.fragment.app.Fragment;
+import androidx.core.content.ContextCompat;
 import com.example.mineguard.R;
 import com.example.mineguard.data.StatisticsData;
 import com.github.mikephil.charting.charts.LineChart;
@@ -24,8 +28,11 @@ import com.github.mikephil.charting.charts.HorizontalBarChart;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.formatter.PercentFormatter;
+import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -47,13 +54,17 @@ import java.util.Map;
 
 public class HomeFragment extends Fragment {
 
-    private TextView tvTotalAlarms;
-    private TextView tvUnProcessedAlarms;
-    private TextView tvTotalDevices;
-    private TextView tvOnlineDevices;
+    //今日概览成员变量
+    private JSONObject platformStats; // 存储平台统计数据
+    private TextView tvProcessedPercent;
+    private ProgressBar pbRate;
+    private TextView tvTotalAlarmsHeader;
+    private TextView tvUntreatedAlarmsHeader;
+    private TextView tvTotalDevicesHeader;
+    private TextView tvOnlineDevicesHeader;
 
     private LineChart chartAlarmTrends;
-    private PieChart chartTypeStatistics;
+    //private PieChart chartTypeStatistics;
 
     private TextView tvTimeOneWeek;
     private TextView tvTimeOneYear;
@@ -63,8 +74,6 @@ public class HomeFragment extends Fragment {
     private enum TimeSpan {
         ONE_WEEK, ONE_MONTH, ONE_YEAR
     }
-    //今日概览成员变量
-    private JSONObject platformStats; // 存储平台统计数据
 
     //报警趋势图成员变量
     private TimeSpan currentTimeSpan = TimeSpan.ONE_WEEK;
@@ -74,7 +83,9 @@ public class HomeFragment extends Fragment {
 
 
     // 排行榜成员变量
-    private HorizontalBarChart chartAlarmRanking;  // 报警类型排行榜图表
+    //private HorizontalBarChart chartAlarmRanking;  // 报警类型排行榜图表
+    private RadialRankingView radialRankingView;     // 新增：同心圆 View
+    private LinearLayout llRankingLegend;            // 新增：底部图例容器
     private TextView tvRankingTimeOneWeek;  // 排行榜周切换按钮
     private TextView tvRankingTimeOneMonth;  // 排行榜月切换按钮
     private JSONObject apiWeekTop;  // 存储周排行数据
@@ -101,6 +112,14 @@ public class HomeFragment extends Fragment {
         return new HomeFragment();
     }
 
+    public static class AlarmRankingData {
+        String name;
+        int value;
+        public AlarmRankingData(String name, int value) { this.name = name; this.value = value; }
+        public String getName() { return name; }
+        public int getValue() { return value; }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -111,30 +130,44 @@ public class HomeFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
+        // 1. 绑定新UI控件
+        initHeaderViews(view);
         initViews(view);
         setupTimeSpanListeners();
         fetchStatisticsDataFromApi();
         return view;
     }
 
-    private void initViews(View view) {
-        // Overview card views
-        tvTotalAlarms = view.findViewById(R.id.tv_total_alarms);
-        tvUnProcessedAlarms = view.findViewById(R.id.tv_unprocessed_alarms);
-        tvTotalDevices = view.findViewById(R.id.tv_total_devices);
-        tvOnlineDevices = view.findViewById(R.id.tv_online_devices);
+    private void initHeaderViews(View root) {
+        View overviewCard = root.findViewById(R.id.card_header_overview);
+        tvProcessedPercent = overviewCard.findViewById(R.id.tv_processed_percent);
+        pbRate = root.findViewById(R.id.pb_overview_rate);
 
+        // 绑定报警卡片内的控件
+        View alarmCard = root.findViewById(R.id.card_header_alarm);
+        tvTotalAlarmsHeader = alarmCard.findViewById(R.id.tv_total_alarms_header);
+        tvUntreatedAlarmsHeader = alarmCard.findViewById(R.id.tv_untreated_alarms_header);
+
+        // 绑定设备卡片内的控件
+        View deviceCard = root.findViewById(R.id.card_header_device);
+        tvTotalDevicesHeader = deviceCard.findViewById(R.id.tv_total_devices_header);
+        tvOnlineDevicesHeader = deviceCard.findViewById(R.id.tv_online_devices_header);
+    }
+
+    private void initViews(View view) {
         // Chart views
         chartAlarmTrends = view.findViewById(R.id.chart_alarm_trends);
-        //chartDeviceStatistics = view.findViewById(R.id.card_device_statistics).findViewById(R.id.pie_chart);
-        chartTypeStatistics = view.findViewById(R.id.card_type_statistics).findViewById(R.id.pie_chart);
+        //chartTypeStatistics = view.findViewById(R.id.card_type_statistics).findViewById(R.id.pie_chart);
 
         // Time span views
         tvTimeOneWeek = view.findViewById(R.id.tv_time_one_week);
         tvTimeOneYear = view.findViewById(R.id.tv_time_one_year);
 
         // 新增初始化代码
-        chartAlarmRanking = view.findViewById(R.id.card_bar_statistics).findViewById(R.id.bar_chart);
+        //chartAlarmRanking = view.findViewById(R.id.card_bar_statistics).findViewById(R.id.bar_chart);
+        View cardBar = view.findViewById(R.id.card_bar_statistics);
+        radialRankingView = cardBar.findViewById(R.id.radial_ranking_view);
+        llRankingLegend = cardBar.findViewById(R.id.ll_ranking_legend); // 绑定布局里的容器
         tvRankingTimeOneWeek = view.findViewById(R.id.card_bar_statistics).findViewById(R.id.tv_time_one_week);
         tvRankingTimeOneMonth = view.findViewById(R.id.card_bar_statistics).findViewById(R.id.tv_time_one_month);
 
@@ -147,11 +180,11 @@ public class HomeFragment extends Fragment {
         // Chart title views
         TextView tvBarChartTitle = view.findViewById(R.id.card_bar_statistics).findViewById(R.id.tv_chart_title);
         tvWeekMonthAlarmTypeTitle.setText(R.string.week_month_alarm_type_statistics);
-        tvTypeChartTitle = view.findViewById(R.id.card_type_statistics).findViewById(R.id.tv_chart_title);
+        //tvTypeChartTitle = view.findViewById(R.id.card_type_statistics).findViewById(R.id.tv_chart_title);
 
         // Set chart titles
         tvBarChartTitle.setText(R.string.alarm_ranking); // 设置正确的标题
-        tvTypeChartTitle.setText(R.string.type_statistics);
+       // tvTypeChartTitle.setText(R.string.type_statistics);
     }
 
     private void setupTimeSpanListeners() {
@@ -272,7 +305,27 @@ public class HomeFragment extends Fragment {
             }
         }
     }
+    private void updateHeaderUI(int totalAlarms, int unprocessedAlarms, int totalDevices, int onlineDevices) {
+        // --- 1. 更新今日概览卡片 ---
+        // 避免除以0错误
+        int processedAlarms = totalAlarms - unprocessedAlarms;
+        int percent = 0;
+        if (totalAlarms > 0) {
+            percent = (int) (((float) processedAlarms / totalAlarms) * 100);
+        }
 
+        // 设置百分比 (例如: 85%)
+        tvProcessedPercent.setText(percent + "%");
+        pbRate.setProgress(percent);
+
+        // --- 2. 更新报警卡片  ---
+        tvTotalAlarmsHeader.setText(String.valueOf(totalAlarms));
+        tvUntreatedAlarmsHeader.setText(String.valueOf(unprocessedAlarms));
+
+        // --- 3. 更新设备卡片 ---
+        tvTotalDevicesHeader.setText(String.valueOf(totalDevices));
+        tvOnlineDevicesHeader.setText(String.valueOf(onlineDevices));
+    }
 
     private void fetchStatisticsDataFromApi() {
         Log.d("HomeFragment", "开始API请求...");
@@ -348,7 +401,7 @@ public class HomeFragment extends Fragment {
                                 // 更新周/月报警类型饼图数据
                                 loadWeekMonthAlarmTypeData();
                                 // 更新报警类型统计图
-                                loadAlarmTypeStatisticsData();
+                                //loadAlarmTypeStatisticsData();
                             });
                         } else {
                             Log.e("HomeFragment", "API返回错误码: " + jsonObject.getInt("code"));
@@ -364,76 +417,83 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadPlatformStatisticsData() {
-        if (platformStats != null) {
-            try {
-                // 提取所需数据
-                int totalAlerts = platformStats.getInt("total_alerts");
-                int unprocessedAlerts = platformStats.getInt("unresolved_alerts");
-                int cameraCount = platformStats.getInt("camera_count");
-
-                // 计算在线设备数（余煤、挂钩分割版、旋转器的count之和）
-                int onlineDevices = 0;
-                if (platformStats.has("余煤")) {
-                    onlineDevices += platformStats.getJSONObject("余煤").getInt("count");
-                }
-                if (platformStats.has("挂钩分割版")) {
-                    onlineDevices += platformStats.getJSONObject("挂钩分割版").getInt("count");
-                }
-                if (platformStats.has("旋转器")) {
-                    onlineDevices += platformStats.getJSONObject("旋转器").getInt("count");
-                }
-
-                tvTotalAlarms.setText(String.valueOf(totalAlerts));
-                tvUnProcessedAlarms.setText(String.valueOf(unprocessedAlerts));
-                tvTotalDevices.setText(String.valueOf(cameraCount));
-                tvOnlineDevices.setText(String.valueOf(onlineDevices));
-            } catch (JSONException e) {
-                Log.e("HomeFragment", "解析平台统计数据错误: " + e.getMessage());
-                // 发生错误时直接使用模拟数据
-                setMockStatisticsUI();
-            }
-        } else {
-            // 发生错误时直接使用模拟数据
-            setMockStatisticsUI();
-        }
+//        if (platformStats != null) {
+//            try {
+//                // 提取所需数据
+//                int totalAlerts = platformStats.getInt("total_alerts");
+//                int unprocessedAlerts = platformStats.getInt("unresolved_alerts");
+//                int cameraCount = platformStats.getInt("camera_count");
+//
+//                // 计算在线设备数（余煤、挂钩分割版、旋转器的count之和）
+//                int onlineDevices = 0;
+//                if (platformStats.has("余煤")) {
+//                    onlineDevices += platformStats.getJSONObject("余煤").getInt("count");
+//                }
+//                if (platformStats.has("挂钩分割版")) {
+//                    onlineDevices += platformStats.getJSONObject("挂钩分割版").getInt("count");
+//                }
+//                if (platformStats.has("旋转器")) {
+//                    onlineDevices += platformStats.getJSONObject("旋转器").getInt("count");
+//                }
+//                //更新UI
+//                updateHeaderUI(totalAlerts, unprocessedAlerts, cameraCount, onlineDevices);
+//            } catch (JSONException e) {
+//                Log.e("HomeFragment", "解析平台统计数据错误: " + e.getMessage());
+//            }
+//        } else {
+//            // 发生错误时直接使用模拟数据
+//             updateHeaderUI(100, 15, 15, 10);
+//        }
+        updateHeaderUI(100, 36, 24, 17);
     }
 
-    private void setMockStatisticsUI() {
-        Log.d("HomeFragment", "使用模拟统计数据");
-        tvTotalAlarms.setText("6");
-        tvUnProcessedAlarms.setText("2");
-        tvTotalDevices.setText("6");
-        tvOnlineDevices.setText("6");
-    }
 
     // 生成报警趋势数据:根据API返回的daily_total/monthly_total数据
     private void loadAlarmTrendsData() {
         List<StatisticsData.AlarmTrendData> trendData;
 
-        // 尝试使用API数据
-        if (currentTimeSpan == TimeSpan.ONE_WEEK && apiDailyTotal != null) {
-            trendData = generateApiWeeklyData(apiDailyTotal);
-        } else if (currentTimeSpan == TimeSpan.ONE_YEAR && apiMonthlyTotal != null) {
-            trendData = generateApiYearlyData(apiMonthlyTotal);
-        } else {
-            // API数据不可用时直接在方法内部生成模拟数据
-            trendData = new ArrayList<>();
-            Random random = new Random();
+//        // 尝试使用API数据
+//        if (currentTimeSpan == TimeSpan.ONE_WEEK && apiDailyTotal != null) {
+//            trendData = generateApiWeeklyData(apiDailyTotal);
+//        } else if (currentTimeSpan == TimeSpan.ONE_YEAR && apiMonthlyTotal != null) {
+//            trendData = generateApiYearlyData(apiMonthlyTotal);
+//        } else {
+//            // API数据不可用时直接在方法内部生成模拟数据
+//            trendData = new ArrayList<>();
+//            Random random = new Random();
+//
+//            switch (currentTimeSpan) {
+//                case ONE_WEEK:
+//                    String[] days = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+//                    for (String day : days) {
+//                        trendData.add(new StatisticsData.AlarmTrendData(day, random.nextInt(50) + 10));
+//                    }
+//                    break;
+//                case ONE_YEAR:
+//                    String[] months = {"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"};
+//                    for (String month : months) {
+//                        trendData.add(new StatisticsData.AlarmTrendData(month, random.nextInt(100) + 20));
+//                    }
+//                    break;
+//            }
+//        }
+        // API数据不可用时直接在方法内部生成模拟数据
+        trendData = new ArrayList<>();
+        Random random = new Random();
 
-            switch (currentTimeSpan) {
-                case ONE_WEEK:
-                    String[] days = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
-                    for (String day : days) {
-                        trendData.add(new StatisticsData.AlarmTrendData(day, random.nextInt(50) + 10));
-                    }
-                    break;
-                case ONE_YEAR:
-                    String[] months = {"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"};
-                    for (String month : months) {
-                        trendData.add(new StatisticsData.AlarmTrendData(month, random.nextInt(100) + 20));
-                    }
-                    break;
-            }
+        switch (currentTimeSpan) {
+            case ONE_WEEK:
+                String[] days = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+                for (String day : days) {
+                    trendData.add(new StatisticsData.AlarmTrendData(day, random.nextInt(50) + 10));
+                }
+                break;
+            case ONE_YEAR:
+                String[] months = {"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"};
+                for (String month : months) {
+                    trendData.add(new StatisticsData.AlarmTrendData(month, random.nextInt(100) + 20));
+                }
+                break;
         }
 
         ArrayList<Entry> entries = new ArrayList<>();
@@ -444,53 +504,62 @@ public class HomeFragment extends Fragment {
             labels.add(trendData.get(i).getTimeLabel());
         }
 
-        LineDataSet dataSet = new LineDataSet(entries, "报警数量");
-        dataSet.setColor(getResources().getColor(R.color.primary_blue));
-        dataSet.setCircleColor(getResources().getColor(R.color.primary_blue));
-        dataSet.setLineWidth(2f);
-        dataSet.setCircleRadius(4f);
-        dataSet.setDrawCircleHole(false);
-        dataSet.setValueTextSize(10f);
-        dataSet.setMode(LineDataSet.Mode.LINEAR);
+        LineDataSet dataSet = new LineDataSet(entries, "报警趋势");
+        // --- 线条美化 ---
+        dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);       // 设置为圆滑曲线
+        dataSet.setCubicIntensity(0.2f);                      // 曲线弧度
+        dataSet.setLineWidth(3f);                             // 线条宽度
+        dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.primary_blue)); // 线条颜色
 
-        // 添加整数值格式化器
-        dataSet.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return String.valueOf((int) value);
-            }
-        });
+        // --- 节点隐藏 ---
+        dataSet.setDrawCircles(false);                        // 隐藏数据点圆圈 (点击时才会显示)
+        dataSet.setDrawValues(false);                         // 隐藏具体的数值文字
 
-        ArrayList<ILineDataSet> dataSets = new ArrayList<>();
-        dataSets.add(dataSet);
-
-        LineData lineData = new LineData(dataSets);
+        // --- 渐变填充 ---
+        dataSet.setDrawFilled(true);                          // 启用填充
+        // 尝试获取渐变Drawable，如果没有就用半透明色
+        if (ContextCompat.getDrawable(requireContext(), R.drawable.fade_purple) != null) {
+            dataSet.setFillDrawable(ContextCompat.getDrawable(requireContext(), R.drawable.fade_purple));
+        } else {
+            dataSet.setFillColor(Color.parseColor("#204F46E5"));
+        }
+        // --- 设置数据 ---
+        LineData lineData = new LineData(dataSet);
         chartAlarmTrends.setData(lineData);
+        // --- 坐标轴与交互设置 ---
 
-        // Customize chart appearance
-        chartAlarmTrends.getDescription().setEnabled(false);
-        chartAlarmTrends.setTouchEnabled(true);
-        chartAlarmTrends.setDragEnabled(true);
-        chartAlarmTrends.setScaleEnabled(true);
-        chartAlarmTrends.setPinchZoom(true);
-        chartAlarmTrends.setDrawGridBackground(false);
-        chartAlarmTrends.getLegend().setEnabled(false);
+        // 1. 全局设置
+        chartAlarmTrends.getDescription().setEnabled(false);  // 隐藏描述
+        chartAlarmTrends.getLegend().setEnabled(false);       // 隐藏图例
+        chartAlarmTrends.setScaleEnabled(false);              // 禁止缩放
+        chartAlarmTrends.setDrawBorders(false);               // 去掉边框
+        chartAlarmTrends.setExtraBottomOffset(10f);           // 底部留白
 
-        // Customize x-axis
-        chartAlarmTrends.getXAxis().setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                int index = (int) value;
-                if (index >= 0 && index < labels.size()) {
-                    return labels.get(index);
-                }
-                return "";
-            }
-        });
-        // 设置Y轴最小值为0，确保不会显示负数
-        chartAlarmTrends.getAxisLeft().setAxisMinimum(0f);
-        chartAlarmTrends.getAxisRight().setAxisMinimum(0f);
-        chartAlarmTrends.invalidate();
+        // 2. X轴设置 (底部)
+        XAxis xAxis = chartAlarmTrends.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);        // X轴在底部
+        xAxis.setDrawGridLines(false);                        // 去掉X轴竖向网格
+        xAxis.setDrawAxisLine(false);                         // 去掉X轴轴线
+        xAxis.setTextColor(Color.parseColor("#999999"));      // 灰色文字
+        xAxis.setTextSize(12f);
+        xAxis.setGranularity(1f);                             // 强制间隔为1，防止缩放时标签重叠
+        // 【关键】将上面生成的 days 或 months 列表设置给 X 轴
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
+
+        // 3. Y轴 (左侧) 设置
+        YAxis leftAxis = chartAlarmTrends.getAxisLeft();
+        leftAxis.setDrawAxisLine(false);                      // 去掉左侧轴线
+        leftAxis.setTextColor(Color.parseColor("#999999"));   // 灰色文字
+        leftAxis.setAxisMinimum(0f);                          // 从0开始
+        leftAxis.enableGridDashedLine(10f, 10f, 0f);          // 启用虚线网格
+        leftAxis.setGridColor(Color.parseColor("#E0E0E0"));   // 浅灰色网格
+
+        // 4. Y轴 (右侧) 设置 - 【这里解决了你的痛点】
+        chartAlarmTrends.getAxisRight().setEnabled(false);    // 彻底隐藏右侧Y轴
+
+        // --- 刷新动画 ---
+        chartAlarmTrends.animateX(1000);                      // X轴方向动画1秒
+        chartAlarmTrends.invalidate();                        // 刷新重绘
     }
 
     // 添加处理API每周数据的方法
@@ -562,113 +631,86 @@ public class HomeFragment extends Fragment {
     private void loadAlarmRankingData() {
         List<AlarmRankingData> rankingData;
 
-        // 尝试使用API数据
-        if (currentRankingTimeSpan == TimeSpan.ONE_WEEK && apiWeekTop != null) {
-            rankingData = generateApiRankingData(apiWeekTop);
-        } else if (currentRankingTimeSpan == TimeSpan.ONE_MONTH && apiMonthTop != null) {
-            rankingData = generateApiRankingData(apiMonthTop);
-        } else {
-            // API数据不可用时使用模拟数据
-            rankingData = new ArrayList<>();
-            rankingData.add(new AlarmRankingData("余煤检测", 2));
-            rankingData.add(new AlarmRankingData("旋转器检测", 5));
-            rankingData.add(new AlarmRankingData("挂钩检测分割版", 3));
+//        // 尝试使用API数据
+//        if (currentRankingTimeSpan == TimeSpan.ONE_WEEK && apiWeekTop != null) {
+//            rankingData = generateApiRankingData(apiWeekTop);
+//        } else if (currentRankingTimeSpan == TimeSpan.ONE_MONTH && apiMonthTop != null) {
+//            rankingData = generateApiRankingData(apiMonthTop);
+//        } else {
+//            // API数据不可用时使用模拟数据
+//            rankingData = new ArrayList<>();
+//            rankingData.add(new AlarmRankingData("余煤检测", 8));
+//            rankingData.add(new AlarmRankingData("旋转器检测", 5));
+//            rankingData.add(new AlarmRankingData("挂钩检测分割版", 4));
+//            rankingData.add(new AlarmRankingData("人员入侵监测", 2));
+//        }
+        rankingData = new ArrayList<>();
+        rankingData.add(new AlarmRankingData("余煤检测", 25));
+        rankingData.add(new AlarmRankingData("旋转器检测", 16));
+        rankingData.add(new AlarmRankingData("挂钩检测分割版", 9));
+        rankingData.add(new AlarmRankingData("人员入侵监测", 3));
+
+        // === 修改部分开始：不再操作 BarChart，而是操作 RadialView 和 Legend ===
+
+        // 1. 设置圆环数据
+        if (radialRankingView != null) {
+            radialRankingView.setData(rankingData);
         }
 
-        // 创建柱状图数据
-        ArrayList<BarEntry> entries = new ArrayList<>();
-        final ArrayList<String> labels = new ArrayList<>();
+        // 2. 动态生成底部图例 (Legend)
+        if (llRankingLegend != null) {
+            llRankingLegend.removeAllViews(); // 清空旧图例
 
-        // 为柱状图准备数据
-        for (int i = 0; i < rankingData.size(); i++) {
-            entries.add(new BarEntry(i, rankingData.get(i).getValue()));
-            labels.add(rankingData.get(i).getName());
-        }
+            for (int i = 0; i < rankingData.size(); i++) {
+                AlarmRankingData item = rankingData.get(i);
+                int color = radialRankingView.getColorForIndex(i); // 获取圆环对应的颜色
 
-        // 不设置图例标签
-        BarDataSet dataSet = new BarDataSet(entries, "");
-        dataSet.setColor(getResources().getColor(R.color.primary_blue));
-        dataSet.setValueTextSize(12f);
-        dataSet.setValueTextColor(Color.BLACK);
-        dataSet.setDrawValues(true);
-
-        // 添加整数值格式化器
-        dataSet.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return String.valueOf((int) value);
-            }
-        });
-
-        BarData barData = new BarData(dataSet);
-        // 设置柱宽
-        barData.setBarWidth(0.6f);
-        chartAlarmRanking.setData(barData);
-
-        // 自定义图表外观
-        chartAlarmRanking.getDescription().setEnabled(false);
-        chartAlarmRanking.setTouchEnabled(true);
-        chartAlarmRanking.setDragEnabled(true);
-        chartAlarmRanking.setScaleEnabled(true);
-        chartAlarmRanking.setDrawGridBackground(false);
-        chartAlarmRanking.setDrawBarShadow(false);
-        chartAlarmRanking.setDrawValueAboveBar(true);
-
-        // 禁用图例
-        chartAlarmRanking.getLegend().setEnabled(false);
-        // 调整图表间距，确保底部和左侧有足够空间显示标签
-        chartAlarmRanking.setExtraOffsets(40, 10, 20, 60);
-
-        // 配置X轴显示报警类型名称（在底部）
-        XAxis xAxis = chartAlarmRanking.getXAxis();
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setGranularity(1f);
-        xAxis.setAxisMinimum(-0.5f);
-        xAxis.setAxisMaximum(rankingData.size() - 0.5f);
-        xAxis.setDrawGridLines(false);
-        xAxis.setDrawAxisLine(true);
-        xAxis.setTextSize(10f);
-        xAxis.setLabelRotationAngle(-30f); // 旋转标签以避免重叠
-        xAxis.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                int index = (int) Math.round(value);
-                if (index >= 0 && index < labels.size()) {
-                    return labels.get(index);
-                }
-                return "";
-            }
-        });
-
-        // 配置Y轴
-        YAxis leftAxis = chartAlarmRanking.getAxisLeft();
-        leftAxis.setEnabled(true);
-        leftAxis.setGranularity(1f);
-        leftAxis.setAxisMinimum(0f);
-        leftAxis.setDrawGridLines(false);
-        leftAxis.setDrawAxisLine(true);
-        leftAxis.setTextSize(12f);
-        leftAxis.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return String.valueOf((int) value);
-            }
-        });
-
-        // 设置Y轴最大值
-        float maxValue = 0;
-        for (BarEntry entry : entries) {
-            if (entry.getY() > maxValue) {
-                maxValue = entry.getY();
+                // 创建图例行视图
+                View legendItem = createLegendItemView(item, color);
+                llRankingLegend.addView(legendItem);
             }
         }
-        // 添加10%的余量
-        leftAxis.setAxisMaximum(maxValue * 1.1f);
+    }
+    // 辅助方法：创建底部的图例行 (圆点 - 名称 - 数值)
+    private View createLegendItemView(AlarmRankingData item, int color) {
+        LinearLayout row = new LinearLayout(getContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(0, 8, 0, 8); // 上下间距
 
-        // 禁用右侧Y轴
-        chartAlarmRanking.getAxisRight().setEnabled(false);
+        // 1. 颜色圆点
+        View dot = new View(getContext());
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(24, 24); // 8dp大小
+        dotParams.setMargins(0, 0, 24, 0); // 右边距
+        dot.setLayoutParams(dotParams);
 
-        chartAlarmRanking.invalidate();
+        // 绘制圆点背景
+        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+        shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        shape.setColor(color);
+        dot.setBackground(shape);
+
+        // 2. 报警名称
+        TextView tvName = new TextView(getContext());
+        tvName.setText(item.getName());
+        tvName.setTextColor(Color.parseColor("#333333"));
+        tvName.setTextSize(14);
+        // 让名字占据中间剩余空间
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, -2, 1.0f);
+        tvName.setLayoutParams(nameParams);
+
+        // 3. 报警数值
+        TextView tvValue = new TextView(getContext());
+        tvValue.setText(item.getValue() + " 次");
+        tvValue.setTextColor(color); // 数值颜色和图表一致，便于对应
+        tvValue.setTextSize(14);
+        tvValue.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        row.addView(dot);
+        row.addView(tvName);
+        row.addView(tvValue);
+
+        return row;
     }
 
     // 从API数据生成排行榜数据
@@ -694,52 +736,59 @@ public class HomeFragment extends Fragment {
         return data;
     }
 
-    // 排行榜数据类
-    private static class AlarmRankingData {
-        private String name;
-        private int value;
-
-        public AlarmRankingData(String name, int value) {
-            this.name = name;
-            this.value = value;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public int getValue() {
-            return value;
-        }
-    }
-
     private void loadWeekMonthAlarmTypeData() {
         List<StatisticsData.AlarmTypeData> typeData;
 
-        // 尝试使用API数据
-        if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK && apiWeekTotal != null) {
-            typeData = generateAlarmTypeDataFromWeekMonthTotal(apiWeekTotal);
-            Log.d("HomeFragment", "使用API周数据生成报警类型统计");
-        } else if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_MONTH && apiMonthTotal != null) {
-            typeData = generateAlarmTypeDataFromWeekMonthTotal(apiMonthTotal);
-            Log.d("HomeFragment", "使用API月数据生成报警类型统计");
+//        // 尝试使用API数据
+//        if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK && apiWeekTotal != null) {
+//            typeData = generateAlarmTypeDataFromWeekMonthTotal(apiWeekTotal);
+//            Log.d("HomeFragment", "使用API周数据生成报警类型统计");
+//        } else if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_MONTH && apiMonthTotal != null) {
+//            typeData = generateAlarmTypeDataFromWeekMonthTotal(apiMonthTotal);
+//            Log.d("HomeFragment", "使用API月数据生成报警类型统计");
+//        } else {
+//            // API数据不可用时使用模拟数据
+//            typeData = new ArrayList<>();
+//            if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK) {
+//                // 模拟周数据
+//                typeData.add(new StatisticsData.AlarmTypeData("余煤检测", 3));
+//                typeData.add(new StatisticsData.AlarmTypeData("旋转器检测", 5));
+//                typeData.add(new StatisticsData.AlarmTypeData("挂钩检测分割版", 2));
+//            } else {
+//                // 模拟月数据
+//                typeData.add(new StatisticsData.AlarmTypeData("余煤检测", 12));
+//                typeData.add(new StatisticsData.AlarmTypeData("旋转器检测", 18));
+//                typeData.add(new StatisticsData.AlarmTypeData("挂钩检测分割版", 8));
+//            }
+//            Log.d("HomeFragment", "使用模拟数据生成报警类型统计");
+//        }
+        // API数据不可用时使用模拟数据
+        typeData = new ArrayList<>();
+//        if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK) {
+//            // 模拟周数据
+//            typeData.add(new StatisticsData.AlarmTypeData("余煤检测", 3));
+//            typeData.add(new StatisticsData.AlarmTypeData("旋转器检测", 5));
+//            typeData.add(new StatisticsData.AlarmTypeData("挂钩检测分割版", 2));
+//        } else {
+//            // 模拟月数据
+//            typeData.add(new StatisticsData.AlarmTypeData("余煤检测", 12));
+//            typeData.add(new StatisticsData.AlarmTypeData("旋转器检测", 18));
+//            typeData.add(new StatisticsData.AlarmTypeData("挂钩检测分割版", 8));
+//        }
+        if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK) {
+            // 模拟周数据
+            typeData.add(new StatisticsData.AlarmTypeData("矿井1", 3));
+            typeData.add(new StatisticsData.AlarmTypeData("矿井2", 5));
+            typeData.add(new StatisticsData.AlarmTypeData("矿井3", 2));
+            typeData.add(new StatisticsData.AlarmTypeData("矿井4", 4));
         } else {
-            // API数据不可用时使用模拟数据
-            typeData = new ArrayList<>();
-            if (currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK) {
-                // 模拟周数据
-                typeData.add(new StatisticsData.AlarmTypeData("余煤检测", 3));
-                typeData.add(new StatisticsData.AlarmTypeData("旋转器检测", 5));
-                typeData.add(new StatisticsData.AlarmTypeData("挂钩检测分割版", 2));
-            } else {
-                // 模拟月数据
-                typeData.add(new StatisticsData.AlarmTypeData("余煤检测", 12));
-                typeData.add(new StatisticsData.AlarmTypeData("旋转器检测", 18));
-                typeData.add(new StatisticsData.AlarmTypeData("挂钩检测分割版", 8));
-            }
-            Log.d("HomeFragment", "使用模拟数据生成报警类型统计");
+            // 模拟月数据
+            typeData.add(new StatisticsData.AlarmTypeData("矿井1", 12));
+            typeData.add(new StatisticsData.AlarmTypeData("矿井2", 18));
+            typeData.add(new StatisticsData.AlarmTypeData("矿井3", 8));
+            typeData.add(new StatisticsData.AlarmTypeData("矿井4", 6));
         }
-
+        Log.d("HomeFragment", "使用模拟数据生成报警类型统计");
         // 确保有数据可显示
         if (typeData.isEmpty()) {
             Log.d("HomeFragment", "没有报警类型数据，添加默认项");
@@ -748,38 +797,80 @@ public class HomeFragment extends Fragment {
 
         ArrayList<PieEntry> entries = new ArrayList<>();
         for (StatisticsData.AlarmTypeData data : typeData) {
+            // PieEntry 第二个参数是标签，这里传空字符串，因为我们会用图例或外部标签显示
             entries.add(new PieEntry(data.getAlarmCount(), data.getTypeName()));
-            Log.d("HomeFragment", "添加报警类型: " + data.getTypeName() + ", 数量: " + data.getAlarmCount());
         }
 
-        PieDataSet dataSet = new PieDataSet(entries, "");
-        dataSet.setColors(getColorArray());
-        dataSet.setValueTextSize(12f);
-        dataSet.setValueTextColor(Color.WHITE);
+        // === 2. DataSet 美化设置 (关键修改) ===
+        PieDataSet dataSet = new PieDataSet(entries, ""); // 图例标签设为空，因为单独配置
 
-        // 添加整数值格式化器
-        dataSet.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return String.valueOf((int) value);
-            }
-        });
+        dataSet.setColors(getColorArray()); // 设置颜色
 
+        // 间距与样式
+        dataSet.setSliceSpace(3f); // 切片之间的白缝，看起来更精致
+        dataSet.setSelectionShift(5f); // 点击时的突出距离
+
+        // --- 数据线与数值位置设置 (让图表不拥挤的核心) ---
+        dataSet.setXValuePosition(PieDataSet.ValuePosition.OUTSIDE_SLICE); // 标签在外部
+        dataSet.setYValuePosition(PieDataSet.ValuePosition.OUTSIDE_SLICE); // 数值在外部
+
+        // 连接线样式
+        dataSet.setValueLinePart1OffsetPercentage(80.f); // 连接线起始位置
+        dataSet.setValueLinePart1Length(0.3f); // 第一段线长
+        dataSet.setValueLinePart2Length(0.4f); // 第二段线长
+        dataSet.setValueLineWidth(5f);         // 线宽
+        dataSet.setValueLineColor(Color.GRAY); // 线颜色
+
+        // 数值文字样式
+        dataSet.setValueTextSize(20f);
+        dataSet.setValueTextColor(Color.BLACK); // 外部文字用黑色，清晰
+
+        // 格式化为百分比
+        dataSet.setValueFormatter(new PercentFormatter(chartWeekMonthalarmType));
+
+        // === 3. Chart 全局设置 ===
         PieData pieData = new PieData(dataSet);
         chartWeekMonthalarmType.setData(pieData);
 
-        // 自定义饼图外观
-        chartWeekMonthalarmType.getDescription().setEnabled(false);
+        // 启用百分比显示
+        chartWeekMonthalarmType.setUsePercentValues(true);
+
+        // 样式设置
+        chartWeekMonthalarmType.getDescription().setEnabled(false); // 隐藏描述
+        chartWeekMonthalarmType.setExtraOffsets(20.f, 0.f, 20.f, 0.f); // 【关键】设置额外边距，防止外部标签被截断
+
+        // 圈设置
         chartWeekMonthalarmType.setDrawHoleEnabled(true);
         chartWeekMonthalarmType.setHoleColor(Color.WHITE);
-        chartWeekMonthalarmType.setTransparentCircleRadius(61f);
-        chartWeekMonthalarmType.setHoleRadius(58f);
-        chartWeekMonthalarmType.setDrawCenterText(true);
-        chartWeekMonthalarmType.setCenterText(currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK ? "本周报警分布" : "本月报警分布");
-        chartWeekMonthalarmType.setCenterTextSize(16f);
-        chartWeekMonthalarmType.getLegend().setEnabled(true);
-        chartWeekMonthalarmType.getLegend().setTextSize(12f);
+        chartWeekMonthalarmType.setTransparentCircleColor(Color.WHITE);
+        chartWeekMonthalarmType.setTransparentCircleAlpha(110);
+        chartWeekMonthalarmType.setHoleRadius(45f); // 中间孔的大小
+        chartWeekMonthalarmType.setTransparentCircleRadius(55f); // 半透明圈大小
 
+        // 中间文字
+        chartWeekMonthalarmType.setDrawCenterText(true);
+        chartWeekMonthalarmType.setCenterText(currentWeekMonthAlarmTypeTimeSpan == TimeSpan.ONE_WEEK ? "本周\n分布" : "本月\n分布");
+        chartWeekMonthalarmType.setCenterTextSize(18f);
+        chartWeekMonthalarmType.setCenterTextColor(Color.GRAY);
+
+        // 隐藏饼图上的 Entry Label (也就是具体的报警名称文字)，只显示数值百分比
+        // 如果你想显示名称，改为 setDrawEntryLabels(true) 并设置颜色
+        chartWeekMonthalarmType.setDrawEntryLabels(false);
+
+        // === 4. 图例 Legend 设置 (美化底部图例) ===
+        Legend l = chartWeekMonthalarmType.getLegend();
+        l.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
+        l.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
+        l.setOrientation(Legend.LegendOrientation.HORIZONTAL);
+        l.setDrawInside(false);
+        l.setXEntrySpace(7f); // 图例间距
+        l.setYEntrySpace(0f);
+        l.setYOffset(10f);    // 底部抬高一点
+        l.setTextSize(11f);   // 图例文字大小
+        l.setTextColor(Color.parseColor("#666666")); // 灰色文字
+        l.setWordWrapEnabled(true); // 允许图例换行，防止太长显示不全
+
+        // 刷新图表
         chartWeekMonthalarmType.invalidate();
     }
 
@@ -813,101 +904,101 @@ public class HomeFragment extends Fragment {
     }
 
     // 生成报警类型统计数据:根据API返回的processing_info数据
-    private void loadAlarmTypeStatisticsData() {
-        List<StatisticsData.AlarmTypeData> typeData;
-
-        // 尝试使用API返回的processing_info数据
-        if (processingInfo != null) {
-            typeData = generateAlarmTypeDataFromApi(processingInfo);
-            Log.d("HomeFragment", "使用API数据生成报警类型统计，类型数量: " + typeData.size());
-        } else {
-            // API数据不可用时直接在方法内生成模拟数据，不再调用独立方法
-            typeData = new ArrayList<>();
-            Random random = new Random();
-            typeData.add(new StatisticsData.AlarmTypeData("入侵报警", random.nextInt(25) + 10));
-            typeData.add(new StatisticsData.AlarmTypeData("火灾报警", random.nextInt(20) + 8));
-            typeData.add(new StatisticsData.AlarmTypeData("设备故障", random.nextInt(30) + 12));
-            typeData.add(new StatisticsData.AlarmTypeData("环境异常", random.nextInt(15) + 5));
-            typeData.add(new StatisticsData.AlarmTypeData("其他报警", random.nextInt(18) + 7));
-            Log.d("HomeFragment", "使用模拟数据生成报警类型统计");
-        }
-
-        // 确保有数据可显示
-        if (typeData.isEmpty()) {
-            Log.d("HomeFragment", "没有报警类型数据，添加默认项");
-            typeData.add(new StatisticsData.AlarmTypeData("暂无报警", 0));
-        }
-
-        ArrayList<PieEntry> entries = new ArrayList<>();
-        for (StatisticsData.AlarmTypeData data : typeData) {
-            entries.add(new PieEntry(data.getAlarmCount(), data.getTypeName()));
-            Log.d("HomeFragment", "添加报警类型: " + data.getTypeName() + ", 数量: " + data.getAlarmCount());
-        }
-
-        PieDataSet dataSet = new PieDataSet(entries, "");
-        dataSet.setColors(getColorArray());
-        dataSet.setValueTextSize(12f);
-        dataSet.setValueTextColor(Color.WHITE);
-
-        // 添加整数值格式化器
-        dataSet.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return String.valueOf((int) value);
-            }
-        });
-
-        PieData pieData = new PieData(dataSet);
-        chartTypeStatistics.setData(pieData);
-
-        // Customize chart appearance
-        chartTypeStatistics.getDescription().setEnabled(false);
-        chartTypeStatistics.setDrawHoleEnabled(true);
-        chartTypeStatistics.setHoleColor(Color.WHITE);
-        chartTypeStatistics.setTransparentCircleRadius(61f);
-        chartTypeStatistics.setHoleRadius(58f);
-        chartTypeStatistics.setDrawCenterText(true);
-        chartTypeStatistics.setCenterText("类型分布");
-        chartTypeStatistics.setCenterTextSize(16f);
-        chartTypeStatistics.getLegend().setEnabled(true);
-        chartTypeStatistics.getLegend().setTextSize(12f);
-
-        chartTypeStatistics.invalidate();
-    }
-
-    // 生成报警类型统计数据:根据API返回的processing_info数据
-    private List<StatisticsData.AlarmTypeData> generateAlarmTypeDataFromApi(JSONObject processingInfo) {
-        List<StatisticsData.AlarmTypeData> typeData = new ArrayList<>();
-        Map<String, Integer> typeCountMap = new HashMap<>();
-
-        try {
-            // 检查processing_info是否包含list字段
-            if (processingInfo.has("list")) {
-                JSONArray alarmList = processingInfo.getJSONArray("list");
-                Log.d("HomeFragment", "processing_info.list长度: " + alarmList.length());
-
-                // 统计每种报警类型的数量
-                for (int i = 0; i < alarmList.length(); i++) {
-                    JSONObject alarmItem = alarmList.getJSONObject(i);
-                    if (alarmItem.has("type")) {
-                        String type = alarmItem.getString("type");
-                        typeCountMap.put(type, typeCountMap.getOrDefault(type, 0) + 1);
-                        Log.d("HomeFragment", "处理报警项 " + i + ": type=" + type);
-                    }
-                }
-
-                // 将统计结果转换为AlarmTypeData列表
-                for (Map.Entry<String, Integer> entry : typeCountMap.entrySet()) {
-                    typeData.add(new StatisticsData.AlarmTypeData(entry.getKey(), entry.getValue()));
-                    Log.d("HomeFragment", "添加统计结果: " + entry.getKey() + " = " + entry.getValue());
-                }
-            }
-        } catch (JSONException e) {
-            Log.e("HomeFragment", "解析processing_info数据失败: " + e.getMessage());
-        }
-
-        return typeData;
-    }
+//    private void loadAlarmTypeStatisticsData() {
+//        List<StatisticsData.AlarmTypeData> typeData;
+//
+//        // 尝试使用API返回的processing_info数据
+//        if (processingInfo != null) {
+//            typeData = generateAlarmTypeDataFromApi(processingInfo);
+//            Log.d("HomeFragment", "使用API数据生成报警类型统计，类型数量: " + typeData.size());
+//        } else {
+//            // API数据不可用时直接在方法内生成模拟数据，不再调用独立方法
+//            typeData = new ArrayList<>();
+//            Random random = new Random();
+//            typeData.add(new StatisticsData.AlarmTypeData("入侵报警", random.nextInt(25) + 10));
+//            typeData.add(new StatisticsData.AlarmTypeData("火灾报警", random.nextInt(20) + 8));
+//            typeData.add(new StatisticsData.AlarmTypeData("设备故障", random.nextInt(30) + 12));
+//            typeData.add(new StatisticsData.AlarmTypeData("环境异常", random.nextInt(15) + 5));
+//            typeData.add(new StatisticsData.AlarmTypeData("其他报警", random.nextInt(18) + 7));
+//            Log.d("HomeFragment", "使用模拟数据生成报警类型统计");
+//        }
+//
+//        // 确保有数据可显示
+//        if (typeData.isEmpty()) {
+//            Log.d("HomeFragment", "没有报警类型数据，添加默认项");
+//            typeData.add(new StatisticsData.AlarmTypeData("暂无报警", 0));
+//        }
+//
+//        ArrayList<PieEntry> entries = new ArrayList<>();
+//        for (StatisticsData.AlarmTypeData data : typeData) {
+//            entries.add(new PieEntry(data.getAlarmCount(), data.getTypeName()));
+//            Log.d("HomeFragment", "添加报警类型: " + data.getTypeName() + ", 数量: " + data.getAlarmCount());
+//        }
+//
+//        PieDataSet dataSet = new PieDataSet(entries, "");
+//        dataSet.setColors(getColorArray());
+//        dataSet.setValueTextSize(12f);
+//        dataSet.setValueTextColor(Color.WHITE);
+//
+//        // 添加整数值格式化器
+//        dataSet.setValueFormatter(new ValueFormatter() {
+//            @Override
+//            public String getFormattedValue(float value) {
+//                return String.valueOf((int) value);
+//            }
+//        });
+//
+//        PieData pieData = new PieData(dataSet);
+//        chartTypeStatistics.setData(pieData);
+//
+//        // Customize chart appearance
+//        chartTypeStatistics.getDescription().setEnabled(false);
+//        chartTypeStatistics.setDrawHoleEnabled(true);
+//        chartTypeStatistics.setHoleColor(Color.WHITE);
+//        chartTypeStatistics.setTransparentCircleRadius(61f);
+//        chartTypeStatistics.setHoleRadius(58f);
+//        chartTypeStatistics.setDrawCenterText(true);
+//        chartTypeStatistics.setCenterText("类型分布");
+//        chartTypeStatistics.setCenterTextSize(16f);
+//        chartTypeStatistics.getLegend().setEnabled(true);
+//        chartTypeStatistics.getLegend().setTextSize(12f);
+//
+//        chartTypeStatistics.invalidate();
+//    }
+//
+//    // 生成报警类型统计数据:根据API返回的processing_info数据
+//    private List<StatisticsData.AlarmTypeData> generateAlarmTypeDataFromApi(JSONObject processingInfo) {
+//        List<StatisticsData.AlarmTypeData> typeData = new ArrayList<>();
+//        Map<String, Integer> typeCountMap = new HashMap<>();
+//
+//        try {
+//            // 检查processing_info是否包含list字段
+//            if (processingInfo.has("list")) {
+//                JSONArray alarmList = processingInfo.getJSONArray("list");
+//                Log.d("HomeFragment", "processing_info.list长度: " + alarmList.length());
+//
+//                // 统计每种报警类型的数量
+//                for (int i = 0; i < alarmList.length(); i++) {
+//                    JSONObject alarmItem = alarmList.getJSONObject(i);
+//                    if (alarmItem.has("type")) {
+//                        String type = alarmItem.getString("type");
+//                        typeCountMap.put(type, typeCountMap.getOrDefault(type, 0) + 1);
+//                        Log.d("HomeFragment", "处理报警项 " + i + ": type=" + type);
+//                    }
+//                }
+//
+//                // 将统计结果转换为AlarmTypeData列表
+//                for (Map.Entry<String, Integer> entry : typeCountMap.entrySet()) {
+//                    typeData.add(new StatisticsData.AlarmTypeData(entry.getKey(), entry.getValue()));
+//                    Log.d("HomeFragment", "添加统计结果: " + entry.getKey() + " = " + entry.getValue());
+//                }
+//            }
+//        } catch (JSONException e) {
+//            Log.e("HomeFragment", "解析processing_info数据失败: " + e.getMessage());
+//        }
+//
+//        return typeData;
+//    }
 
     private int[] getColorArray() {
         return new int[]{

@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-            android:id="@+id/nav_home"
-            android:icon="@drawable/placeholder"
-            android:title="数据" />
+        android:id="@+id/nav_home"
+        android:icon="@drawable/icon_data_vector"
+        android:title="数据" />
     <item
-            android:id="@+id/nav_alarms"
-            android:icon="@drawable/placeholder"
-            android:title="报警" />
+        android:id="@+id/nav_alarms"
+        android:icon="@drawable/icon_alarm_vector"
+        android:title="报警" />
     <item
-            android:id="@+id/nav_preview"
-            android:icon="@drawable/placeholder"
-            android:title="预览" />
+        android:id="@+id/nav_preview"
+        android:icon="@drawable/icon_preview_vector"
+        android:title="预览" />
     <item
-            android:id="@+id/nav_profile"
-            android:icon="@drawable/placeholder"
-            android:title="我的" />
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/icon_home_vector"
+        android:title="我的" />
 </menu>

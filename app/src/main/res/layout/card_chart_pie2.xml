@@ -27,7 +27,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="本周/本月报警类型统计"
+                android:text="本周/本月报警场景统计"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -62,7 +62,9 @@
         <com.github.mikephil.charting.charts.PieChart
             android:id="@+id/pie_chart"
             android:layout_width="match_parent"
-            android:layout_height="250dp" />
+            android:layout_height="280dp"
+            android:padding="10dp"
+            android:clipToPadding="false"/>
 
     </LinearLayout>
 

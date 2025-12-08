@@ -1,5 +1,7 @@
 package com.example.mineguard.alarm;
+
 import static com.example.mineguard.MyApplication.globalIP;
+
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -19,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.SearchView;
 import android.widget.Toast;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -26,6 +29,9 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 
 import com.example.mineguard.MainActivity;
 import com.example.mineguard.R;
@@ -59,7 +65,7 @@ import okhttp3.Request;
  * 报警管理Fragment
  * 实现实时报警推送、应急策略、报警信息查询和报警详情功能
  */
-public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClickListener, 
+public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClickListener,
         FilterDialog.OnFilterChangeListener {
 
     private static final String ARG_PARAM1 = "param1";
@@ -69,7 +75,9 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
     private static final String CHANNEL_ID = "alarm_channel";
     private static final int NOTIFICATION_ID = 1001;
     private static final String TAG = "AlarmFragment";
-
+    private LinearLayout layoutEmpty;
+    private LinearLayout headerContainer;
+    private View btnFilter;
     private RecyclerView recyclerView;
     private SearchView searchView;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -83,19 +91,12 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
     private int currentAlarmCount = 0;
     private int totalAlarmCount = 0; // 存储API返回的报警总数
 
-//    // 筛选条件
-//    private String selectedDevice = "";
-//    private String selectedAlgorithm = "";
-//    private String selectedScene = "";
-//    private String selectedArea = "";
-//    private String selectedStatus = "";
-//    private String selectedTimeRange = "";
-    // 替换原来的筛选字段声明
+    // 筛选条件
     private String selectedAlarmType = "";
     private String selectedAlarmLevel = "";
     private String selectedStatus = "";
     private String selectedLocation = "";
-    
+
     public AlarmFragment() {
         // Required empty public constructor
     }
@@ -116,7 +117,7 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
             String mParam1 = getArguments().getString(ARG_PARAM1);
             String mParam2 = getArguments().getString(ARG_PARAM2);
         }
-        
+
         initializeServices();
         createNotificationChannel();
     }
@@ -125,13 +126,13 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_alarm, container, false);
-        
+
         initializeViews(view);
         setupRecyclerView();
-setupSearchView();
+        setupSearchView();
         setupSwipeRefresh();
         loadAlarmData();
-        
+
         return view;
     }
 
@@ -139,7 +140,7 @@ setupSearchView();
         notificationManager = (NotificationManager) requireContext().getSystemService(Context.NOTIFICATION_SERVICE);
         vibrator = (Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
         preferences = requireContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        
+
         // 初始化铃声用于语音提醒
         Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         if (alarmUri == null) {
@@ -148,7 +149,7 @@ setupSearchView();
         ringtone = RingtoneManager.getRingtone(requireContext(), alarmUri);
     }
 
-private void createNotificationChannel() {
+    private void createNotificationChannel() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
@@ -160,25 +161,53 @@ private void createNotificationChannel() {
         }
     }
 
-private void initializeViews(View view) {
+    private void initializeViews(View view) {
+        headerContainer = view.findViewById(R.id.headerContainer);
         recyclerView = view.findViewById(R.id.recyclerView);
+        layoutEmpty = view.findViewById(R.id.layoutEmpty);
         searchView = view.findViewById(R.id.searchView);
         swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
-        
+        btnFilter = view.findViewById(R.id.btnFilter);
+
+        // 【插入在这里】动态适配状态栏高度
+        // =======================================================
+        if (headerContainer != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(headerContainer, (v, windowInsets) -> {
+                // 获取系统状态栏的高度
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.statusBars());
+
+                // 动态设置 Padding:
+                // 左(不变), 上(状态栏高度 + 原本的12dp), 右(不变), 下(不变)
+                v.setPadding(
+                        v.getPaddingLeft(),
+                        insets.top + dp2px(getContext(), 12),
+                        v.getPaddingRight(),
+                        v.getPaddingBottom()
+                );
+
+                return windowInsets;
+            });
+        }
         // 设置筛选按钮点击事件
-view.findViewById(R.id.btnFilter).setOnClickListener(v -> showFilterDialog());
-        
+        view.findViewById(R.id.btnFilter).setOnClickListener(v -> showFilterDialog());
+
         // 设置清空筛选按钮点击事件
-        view.findViewById(R.id.btnClearFilter).setOnClickListener(v -> clearFilters());
+        //view.findViewById(R.id.btnClearFilter).setOnClickListener(v -> clearFilters());
     }
 
-private void setupRecyclerView() {
+    private int dp2px(Context context, float dpValue) {
+        if (context == null) return 0;
+        final float scale = context.getResources().getDisplayMetrics().density;
+        return (int) (dpValue * scale + 0.5f);
+    }
+
+    private void setupRecyclerView() {
         alarmList = new ArrayList<>();
         filteredList = new ArrayList<>();
         alarmAdapter = new AlarmAdapter(filteredList, this);
-        
+
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-recyclerView.setAdapter(alarmAdapter);
+        recyclerView.setAdapter(alarmAdapter);
     }
 
     private void setupSearchView() {
@@ -211,9 +240,10 @@ recyclerView.setAdapter(alarmAdapter);
 
     /**
      * 从API获取报警数据
+     *
      * @param camera_id 可选，按摄像机ID筛选
-     * @param page 可选，分页页码
-     * @param limitNum 可选，每页条数（最大500）
+     * @param page      可选，分页页码
+     * @param limitNum  可选，每页条数（最大500）
      */
     private void getAlertsBundle(Integer camera_id, Integer page, Integer limitNum) {
         OkHttpClient client = new OkHttpClient();
@@ -221,7 +251,7 @@ recyclerView.setAdapter(alarmAdapter);
         // 构建URL和参数
         String baseUrl = "http://" + globalIP + ":5004/data/alerts_bundle";
         StringBuilder urlBuilder = new StringBuilder(baseUrl);
-boolean firstParam = true;
+        boolean firstParam = true;
 
         if (camera_id != null) {
             urlBuilder.append(firstParam ? "?" : "&");
@@ -396,21 +426,21 @@ boolean firstParam = true;
         selectedLocation = location;
         applyFilters();
     }
-    
+
     // 修改filterAlarms方法，使用新的筛选字段
     private void filterAlarms(String query) {
         filteredList.clear();
-        
+
         for (AlarmItem alarm : alarmList) {
             boolean matches = true;
-            
+
             // 搜索关键词匹配
             if (!query.isEmpty()) {
                 matches = (alarm.getName() != null && alarm.getName().toLowerCase().contains(query.toLowerCase())) ||
-                         (alarm.getType() != null && alarm.getType().toLowerCase().contains(query.toLowerCase())) ||
-                         (alarm.getLocation() != null && alarm.getLocation().toLowerCase().contains(query.toLowerCase()));
+                        (alarm.getType() != null && alarm.getType().toLowerCase().contains(query.toLowerCase())) ||
+                        (alarm.getLocation() != null && alarm.getLocation().toLowerCase().contains(query.toLowerCase()));
             }
-            
+
             // 应用新的筛选条件
             if (matches && !selectedAlarmType.isEmpty()) {
                 matches = alarm.getType() != null && alarm.getType().equals(selectedAlarmType);
@@ -430,15 +460,15 @@ boolean firstParam = true;
             if (matches && !selectedLocation.isEmpty()) {
                 matches = alarm.getLocation() != null && alarm.getLocation().equals(selectedLocation);
             }
-            
+
             if (matches) {
                 filteredList.add(alarm);
             }
         }
-        
+
         alarmAdapter.notifyDataSetChanged();
     }
-    
+
     // 添加缺失的applyFilters方法
     private void applyFilters() {
         filterAlarms(searchView.getQuery().toString());
@@ -466,7 +496,7 @@ boolean firstParam = true;
     private void checkNewAlarms() {
         int newAlarmCount = getUnprocessedAlarmCount();
         int previousCount = preferences.getInt(KEY_ALARM_COUNT, 0);
-        
+
         if (newAlarmCount > previousCount) {
             // 有新报警
             currentAlarmCount = newAlarmCount - previousCount;
@@ -476,7 +506,7 @@ boolean firstParam = true;
                 triggerEmergencyResponse();
             }
         }
-        
+
         // 更新保存的计数
         preferences.edit().putInt(KEY_ALARM_COUNT, newAlarmCount).apply();
     }
