@@ -1,3 +1,72 @@
 1、登录 URL：/api/account/user/login/ 请求方式：POST 请求参数类型：form-data 请求参数： 字段名称 类型 是否必传 说明 username string 是 用户名 password string 是 用户密码（需将原密码字符串进行base64转换） 返回参数格式：json 返回参数： 字段名称 类型 是否必有 可以为空 说明 success_status bool 是 否 响应状态 code int 是 否 响应状态码 message string 是 否 响应提示信息 data object 是 否 响应信息 id int 是 否 用户id username string 是 否 用户名 last_login string 是 是 最后登录时间 is_superuser bool 是 否 是否为超管 name string 是 是 用户姓名 mobile string 是 是 电话号码 email string 是 是 电子邮箱 image sting 是 是 用户头像路径，如果为空显示系统默认头像 department string 是 是 部门id position string 是 是 职位 job_id string 是 是 工号 sex int 是 否 性别，1-男，0-女 birthday string 是 是 生日 status int 是 否 账号状态，1-正常，0-停用 descr string 是 是 备注 create_by int 是 否 账户创建人id create_time string 是 是 创建时间 update_by int 是 否 修改人id update_time string 是 是 修改时间 is_delete bool 是 否 此账户是否被删除了 is_admin bool 是 否 是否是管理员 roles array 是 是 用户角色id数组 token string 是 否 此次登录的token 我想接入这个api，请问我的用户界面应该如何更改？
 
-0
+2、当日数据
+URL：/api/get/index/statistic/data/
+请求方式：POST
+请求参数类型：
+请求参数：无
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	object	是	否	响应信息
+dev_sum_count	string	是	否	当前设备总数
+dev_online_count	string	是	否	当前在线设备数
+alarm_count_today	string	是	否	今日待处理报警数
+todo_count_today	string	是	否	今日新增报警数
+
+3、场景报警统计
+URL：/api/get/index/scene/data/
+请求方式：POST
+请求参数类型：form-data
+请求参数：
+字段名称	类型	是否必传	说明
+statistic_time	string	是	时间维度，可选”hour24”、”day7”、”day30”
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	object	是	否	响应信息
+res_list	array	是	否	数据列表
+scene_name	string	是	否	当前场景名称
+count	int	是	否	当前场景报警数量
+ratio	float	是	否	当前场景报警占比
+alarm_total_count	int	是	否	报警总数
+
+4、设备报警统计
+URL：/api/get/index/dev/alarm/count/data/
+请求方式：POST
+请求参数类型：form-data
+请求参数：
+字段名称	类型	是否必传	说明
+statistic_time	string	是	时间维度，可选”hour24”、”day7”、”day30”
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	array	是	否	响应信息
+dev_name	string	是	否	设备名称
+count	int	是	否	报警数量
+
+5、报警类型统计
+URL：/api/get/index/alarm/detect/target/data/
+请求方式：POST
+请求参数类型：form-data
+请求参数：
+字段名称	类型	是否必传	说明
+statistic_time	string	是	时间维度，可选”hour24”、”day7”、”day30”
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	object	是	否	响应信息
+item_name	string	是	否	报警类型
+count	int	是	否	报警数量

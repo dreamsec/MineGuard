@@ -24,17 +24,34 @@
             android:orientation="vertical"
             android:paddingBottom="20dp">
 
-            <TextView
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="矿山智能APP"
-                android:textColor="#FFFFFF"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:gravity="start"
                 android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
                 android:layout_marginTop="32dp"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="矿山智能APP"
+                    android:textColor="#FFFFFF"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:layout_gravity="start|center_vertical" />
+
+                <ImageButton
+                    android:id="@+id/btn_refresh"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_rotate"
+                    android:contentDescription="刷新"
+                    android:tint="#FFFFFF" />
+
+            </FrameLayout>
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -89,10 +106,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="8dp">
-
-                <include
-                    android:id="@+id/card_trends"
-                    layout="@layout/card_chart_trends" />
 
                 <include
                     android:id="@+id/card_bar_statistics"

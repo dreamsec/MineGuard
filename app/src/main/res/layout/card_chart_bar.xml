@@ -39,6 +39,15 @@
                 android:padding="4dp">
 
                 <TextView
+                    android:id="@+id/tv_time_one_day"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="24小时"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:padding="8dp" />
+
+                <TextView
                     android:id="@+id/tv_time_one_week"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -46,6 +55,7 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:padding="8dp" />
+
                 <TextView
                     android:id="@+id/tv_time_one_month"
                     android:layout_width="wrap_content"
