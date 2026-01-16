@@ -115,6 +115,10 @@
                     android:id="@+id/card_piechart_WeekMonthAlarmType"
                     layout="@layout/card_chart_pie2" />
 
+                <include
+                    android:id="@+id/card_bar_device_statistics"
+                    layout="@layout/card_chart_bar_device" />
+
             </LinearLayout>
 
         </LinearLayout>

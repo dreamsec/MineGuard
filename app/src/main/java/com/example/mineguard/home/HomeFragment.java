@@ -2,6 +2,8 @@ package com.example.mineguard.home;
 
 import static com.example.mineguard.MyApplication.globalIP;
 
+import com.github.mikephil.charting.charts.BarChart;
+
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,6 +21,7 @@ public class HomeFragment extends Fragment {
     private PlatformStatisticsManager platformStatisticsManager;
     private SceneAlarmStatisticsManager sceneAlarmStatisticsManager;
     private AlarmTypeStatisticsManager alarmTypeStatisticsManager;
+    private DeviceAlarmStatisticsManager deviceAlarmStatisticsManager;
     private ImageButton btnRefresh;
 
     public HomeFragment() {
@@ -62,6 +65,7 @@ public class HomeFragment extends Fragment {
         platformStatisticsManager = new PlatformStatisticsManager(requireContext());
         sceneAlarmStatisticsManager = new SceneAlarmStatisticsManager(requireContext());
         alarmTypeStatisticsManager = new AlarmTypeStatisticsManager(requireContext());
+        deviceAlarmStatisticsManager = new DeviceAlarmStatisticsManager(requireContext());
     }
 
     /**
@@ -114,6 +118,21 @@ public class HomeFragment extends Fragment {
                 pieChartCard.findViewById(R.id.tv_time_one_week),
                 pieChartCard.findViewById(R.id.tv_time_one_month)
         );
+
+        // 初始化设备报警统计图表
+        View deviceStatsCard = view.findViewById(R.id.card_bar_device_statistics);
+        deviceAlarmStatisticsManager.bindViews(
+                deviceStatsCard.findViewById(R.id.bar_chart),
+                deviceStatsCard.findViewById(R.id.tv_time_one_day),
+                deviceStatsCard.findViewById(R.id.tv_time_one_week),
+                deviceStatsCard.findViewById(R.id.tv_time_one_month)
+        );
+        deviceAlarmStatisticsManager.setupChart();
+        deviceAlarmStatisticsManager.setDefaultTimeSpan();
+
+        // 设置图表标题
+        TextView tvDeviceChartTitle = deviceStatsCard.findViewById(R.id.tv_chart_title);
+        tvDeviceChartTitle.setText("设备报警统计");
     }
 
     /**
@@ -122,6 +141,7 @@ public class HomeFragment extends Fragment {
     private void setupTimeSpanListeners() {
         sceneAlarmStatisticsManager.setTimeSpanListeners();
         alarmTypeStatisticsManager.setTimeSpanListeners();
+        deviceAlarmStatisticsManager.setTimeSpanListeners();
     }
 
     /**
@@ -140,6 +160,10 @@ public class HomeFragment extends Fragment {
         // 3. 请求报警类型统计数据
         String alarmTypeTimeParam = getTimeParam(alarmTypeStatisticsManager.getCurrentTimeSpan());
         alarmTypeStatisticsManager.fetchStatisticsData(baseUrl, alarmTypeTimeParam);
+
+        // 4. 请求设备报警统计数据
+        String deviceTimeParam = getDeviceTimeParam(deviceAlarmStatisticsManager.getCurrentTimeSpan());
+        deviceAlarmStatisticsManager.fetchStatisticsData(baseUrl, deviceTimeParam);
     }
 
     private String getTimeParam(SceneAlarmStatisticsManager.TimeSpan timeSpan) {
@@ -156,6 +180,19 @@ public class HomeFragment extends Fragment {
     }
 
     private String getTimeParam(AlarmTypeStatisticsManager.TimeSpan timeSpan) {
+        switch (timeSpan) {
+            case ONE_DAY:
+                return "hour24";
+            case ONE_WEEK:
+                return "day7";
+            case ONE_MONTH:
+                return "day30";
+            default:
+                return "hour24";
+        }
+    }
+
+    private String getDeviceTimeParam(DeviceAlarmStatisticsManager.TimeSpan timeSpan) {
         switch (timeSpan) {
             case ONE_DAY:
                 return "hour24";

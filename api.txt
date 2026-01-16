@@ -1,3 +1,9 @@
+说明：
+1、WebApi接口通用前缀：http://服务器ip:80/prod-api
+2、WebSocket接口通用前缀：ws://服务器ip:80/ws-api
+3、以下接口说明中，返回的参数说明均为请求正常返回的说明，如果请求报错或其它异常情况，请按照实际返回的错误或状态码处理
+4、除登录接口外，其它所有接口均需在请求头中携带验证token，键名Authorization，值为Bearer+空格+登录接口返回的token值
+
 1、登录 URL：/api/account/user/login/ 请求方式：POST 请求参数类型：form-data 请求参数： 字段名称 类型 是否必传 说明 username string 是 用户名 password string 是 用户密码（需将原密码字符串进行base64转换） 返回参数格式：json 返回参数： 字段名称 类型 是否必有 可以为空 说明 success_status bool 是 否 响应状态 code int 是 否 响应状态码 message string 是 否 响应提示信息 data object 是 否 响应信息 id int 是 否 用户id username string 是 否 用户名 last_login string 是 是 最后登录时间 is_superuser bool 是 否 是否为超管 name string 是 是 用户姓名 mobile string 是 是 电话号码 email string 是 是 电子邮箱 image sting 是 是 用户头像路径，如果为空显示系统默认头像 department string 是 是 部门id position string 是 是 职位 job_id string 是 是 工号 sex int 是 否 性别，1-男，0-女 birthday string 是 是 生日 status int 是 否 账号状态，1-正常，0-停用 descr string 是 是 备注 create_by int 是 否 账户创建人id create_time string 是 是 创建时间 update_by int 是 否 修改人id update_time string 是 是 修改时间 is_delete bool 是 否 此账户是否被删除了 is_admin bool 是 否 是否是管理员 roles array 是 是 用户角色id数组 token string 是 否 此次登录的token 我想接入这个api，请问我的用户界面应该如何更改？
 
 2、当日数据
@@ -70,3 +76,123 @@ message	string	是	否	响应提示信息
 data	object	是	否	响应信息
 item_name	string	是	否	报警类型
 count	int	是	否	报警数量
+
+6、报警列表
+URL：/api/get/index/alarm/info/list/
+请求方式：POST
+请求参数类型：paramet
+请求参数：
+字段名称	类型	是否必传	说明
+offset	int	是	查询起始位置，计算方式：(pageNum-1)*limit
+pageNum	int	是	页码
+limit	int	是	每页条数
+device_name	string	否	设备名称
+region	int	否	区域id
+scene	int	否	场景id
+algorithm	int	否	算法id
+process_status	int	否	处理状态，0-未处理，1-已处理，2-误报
+begin_time	datetime	否	开始时间
+end_time	datetime	否	结束时间
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	object	是	否	响应信息
+count	int	是	否	报警总条数
+results	array	是	否	报警列表
+id	int	是	否	报警id
+occur_time	string	是	否	报警时间
+device_id	int	是	否	设备id
+detect_target	string	是	否	报警类型
+process_time	string	是	是	处理时间
+scene	int	是	否	所属场景id
+region	int	是	否	所属区域id
+process_status	int	是	否	处理状态
+process_user	string	是	是	处理用户
+alarm_pic	string	是	是	报警图片名称
+alarm_video	string	是	是	报警视频名称
+process_desc	string	是	是	处理说明
+responsible_person	string	是	是	责任人
+responsible_unit	string	是	是	责任单位
+alarm_type	int	是	否	报警类型id
+device_name	string	是	否	设备名称
+scene_name	string	是	否	场景名称
+region_name	string	是	否	区域名称
+alarm_pic_url	string	是	否	报警图片路径
+
+7、获取或下载报警图片
+URL：/api/down/alarm/info/pic/
+请求方式：POST
+请求参数类型：form-data
+请求参数：
+字段名称	类型	是否必传	说明
+id	int	是	报警信息的id
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	array	是	否	响应信息
+address	string	是	否	报警图片路径
+
+8、获取或下载报警视频
+URL：/api/down/alarm/info/video/
+请求方式：POST
+请求参数类型：form-data
+请求参数：
+字段名称	类型	是否必传	说明
+id	int	是	报警信息的id
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	array	是	否	响应信息
+address	string	是	否	报警视频路径
+
+9、获取报警信息场景字典
+URL：/api/get/device/scene/dict/
+请求方式：POST
+请求参数类型：无
+请求参数：无
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	object	是	否	响应信息
+场景id: 场景名称		是	否	场景id和场景名称的键值对
+
+10、获取报警信息区域字典
+URL：/api/get/device/region/dict/
+请求方式：POST
+请求参数类型：无
+请求参数：无
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	object	是	否	响应信息
+区域id: 区域名称		是	否	区域id和区域名称的键值对
+
+11、获取报警信息算法字典
+URL：/api/get/device/algorithm/dict/
+请求方式：POST
+请求参数类型：无
+请求参数：无
+返回参数格式：json
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+success_status	bool	是	否	响应状态
+code	int	是	否	响应状态码
+message	string	是	否	响应提示信息
+data	object	是	否	响应信息
+算法id: 算法名称		是	否	算法id和算法名称的键值对
+
