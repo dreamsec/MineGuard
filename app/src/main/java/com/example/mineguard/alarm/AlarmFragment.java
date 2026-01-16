@@ -24,6 +24,7 @@ import android.widget.Toast;
 import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -153,6 +154,19 @@ public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChan
         loadAlarmData();
 
         return view;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // 首次加载时显示模拟数据，提升用户体验
+        // 当真实API数据返回时会自动替换
+        if (alarmList.isEmpty()) {
+            alarmList.addAll(createMockAlarmData());
+            alarmAdapter.notifyDataSetChanged();
+            Toast.makeText(requireContext(), "演示模式：显示模拟数据", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void initializeServices() {
@@ -365,6 +379,65 @@ public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChan
     }
 
     /**
+     * 创建模拟数据用于离线状态展示
+     */
+    private List<AlarmItem> createMockAlarmData() {
+        List<AlarmItem> mockData = new ArrayList<>();
+
+        // 模拟数据1：人员入侵检测 - 未处理
+        AlarmItem alarm1 = new AlarmItem();
+        alarm1.setId(1001);
+        alarm1.setOccur_time("2024-10-17 15:30:25");
+        alarm1.setDevice_id(1);
+        alarm1.setDevice_name("主井皮带运输机 #01");
+        alarm1.setDetect_target("人员入侵检测");
+        alarm1.setProcess_status(0); // 未处理
+        alarm1.setScene_name("主井运输巷");
+        alarm1.setRegion_name("东区");
+        alarm1.setAlarm_pic_url("http://via.placeholder.com/400x300/FF5252/FFFFFF?text=人员入侵");
+        alarm1.setAlarm_video("alarm_1001_video.mp4");
+        alarm1.setResponsible_person("张三");
+        alarm1.setResponsible_unit("机电队");
+        mockData.add(alarm1);
+
+        // 模拟数据2：皮带跑偏检测 - 已处理
+        AlarmItem alarm2 = new AlarmItem();
+        alarm2.setId(1002);
+        alarm2.setOccur_time("2024-10-17 14:20:15");
+        alarm2.setDevice_id(2);
+        alarm2.setDevice_name("副井提升机 #02");
+        alarm2.setDetect_target("皮带跑偏检测");
+        alarm2.setProcess_status(1); // 已处理
+        alarm2.setProcess_time("2024-10-17 14:35:00");
+        alarm2.setProcess_user("李四");
+        alarm2.setProcess_desc("已调整皮带张力，检测正常，设备恢复正常运行");
+        alarm2.setScene_name("副井提升机房");
+        alarm2.setRegion_name("西区");
+        alarm2.setAlarm_pic_url("http://via.placeholder.com/400x300/FF9800/FFFFFF?text=皮带跑偏");
+        alarm2.setResponsible_person("王五");
+        alarm2.setResponsible_unit("运输队");
+        mockData.add(alarm2);
+
+        // 模拟数据3：明火检测 - 未处理
+        AlarmItem alarm3 = new AlarmItem();
+        alarm3.setId(1003);
+        alarm3.setOccur_time("2024-10-17 16:45:30");
+        alarm3.setDevice_id(3);
+        alarm3.setDevice_name("综采工作面监控 #03");
+        alarm3.setDetect_target("明火检测");
+        alarm3.setProcess_status(0); // 未处理
+        alarm3.setScene_name("综采工作面");
+        alarm3.setRegion_name("南区");
+        alarm3.setAlarm_pic_url("http://via.placeholder.com/400x300/D32F2F/FFFFFF?text=明火检测");
+        alarm3.setAlarm_video("alarm_1003_video.mp4");
+        alarm3.setResponsible_person("赵六");
+        alarm3.setResponsible_unit("通风队");
+        mockData.add(alarm3);
+
+        return mockData;
+    }
+
+    /**
      * 使用新API加载报警数据
      */
     private void loadAlarmDataFromAPI() {
@@ -425,13 +498,18 @@ public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChan
                     // 尝试加载缓存数据（离线模式）
                     if (currentPage == 1) {
                         AlarmApiService.AlarmListResponse cached = alarmApiService.getCachedData();
-                        if (cached != null && cached.data != null && cached.data.results != null) {
+                        if (cached != null && cached.data != null && cached.data.results != null && !cached.data.results.isEmpty()) {
                             Toast.makeText(requireContext(), "网络离线，显示缓存数据", Toast.LENGTH_SHORT).show();
                             alarmList.clear();
                             alarmList.addAll(cached.data.results);
                             alarmAdapter.notifyDataSetChanged();
                         } else {
-                            Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show();
+                            // 无缓存数据时，显示模拟数据
+                            Toast.makeText(requireContext(), "网络离线，显示模拟数据", Toast.LENGTH_LONG).show();
+                            alarmList.clear();
+                            alarmList.addAll(createMockAlarmData());
+                            alarmAdapter.notifyDataSetChanged();
+                            isLastPage = true; // 模拟数据没有更多
                         }
                     } else {
                         Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show();
