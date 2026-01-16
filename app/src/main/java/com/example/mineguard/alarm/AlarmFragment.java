@@ -36,9 +36,12 @@ import androidx.core.graphics.Insets;
 import com.example.mineguard.MainActivity;
 import com.example.mineguard.R;
 import com.example.mineguard.alarm.adapter.AlarmAdapter;
+import com.example.mineguard.alarm.adapter.AlarmAdapterNew;
 import com.example.mineguard.alarm.model.AlarmItem;
 import com.example.mineguard.alarm.dialog.FilterDialog;
 import com.example.mineguard.alarm.dialog.AlarmDetailDialog;
+import com.example.mineguard.alarm.dialog.AlarmDetailDialogNew;
+import com.example.mineguard.api.AlarmApiService;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -66,8 +69,7 @@ import okhttp3.Request;
  * 报警管理Fragment
  * 实现实时报警推送、应急策略、报警信息查询和报警详情功能
  */
-public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClickListener,
-        FilterDialog.OnFilterChangeListener {
+public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChangeListener {
 
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
@@ -82,7 +84,7 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
     private RecyclerView recyclerView;
     private SearchView searchView;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private AlarmAdapter alarmAdapter;
+    private AlarmAdapterNew alarmAdapter;
     private List<AlarmItem> alarmList;
     private List<AlarmItem> filteredList;
     private NotificationManager notificationManager;
@@ -92,11 +94,21 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
     private int currentAlarmCount = 0;
     private int totalAlarmCount = 0; // 存储API返回的报警总数
 
-    // 筛选条件
-    private String selectedAlarmType = "";
-    private String selectedAlarmLevel = "";
-    private String selectedStatus = "";
-    private String selectedLocation = "";
+    // 筛选条件（新API对应）
+    private String selectedDeviceName = "";    // 设备名称
+    private int selectedRegion = 0;             // 区域ID
+    private int selectedScene = 0;              // 场景ID
+    private int selectedAlgorithm = 0;          // 算法ID
+    private int selectedProcessStatus = -1;     // 处理状态 -1不筛选, 0未处理, 1已处理, 2误报
+    private String selectedBeginTime = "";      // 开始时间
+    private String selectedEndTime = "";        // 结束时间
+
+    // 字典数据缓存
+    private java.util.Map<String, String> sceneDict = new java.util.HashMap<>();
+    private java.util.Map<String, String> regionDict = new java.util.HashMap<>();
+    private java.util.Map<String, String> algorithmDict = new java.util.HashMap<>();
+
+    private AlarmApiService alarmApiService;
 
     // 分页相关变量
     private int currentPage = 1;      // 当前页码
@@ -148,12 +160,62 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
         vibrator = (Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
         preferences = requireContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
+        // 初始化API服务
+        alarmApiService = AlarmApiService.getInstance(requireContext());
+
         // 初始化铃声用于语音提醒
         Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         if (alarmUri == null) {
             alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         }
         ringtone = RingtoneManager.getRingtone(requireContext(), alarmUri);
+
+        // 加载字典数据
+        loadDictData();
+    }
+
+    /**
+     * 加载字典数据（场景、区域、算法）
+     */
+    private void loadDictData() {
+        alarmApiService.getSceneDict(new AlarmApiService.AlarmApiCallback<java.util.Map<String, String>>() {
+            @Override
+            public void onSuccess(java.util.Map<String, String> response) {
+                sceneDict.clear();
+                sceneDict.putAll(response);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Log.w(TAG, "加载场景字典失败: " + errorMessage);
+            }
+        });
+
+        alarmApiService.getRegionDict(new AlarmApiService.AlarmApiCallback<java.util.Map<String, String>>() {
+            @Override
+            public void onSuccess(java.util.Map<String, String> response) {
+                regionDict.clear();
+                regionDict.putAll(response);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Log.w(TAG, "加载区域字典失败: " + errorMessage);
+            }
+        });
+
+        alarmApiService.getAlgorithmDict(new AlarmApiService.AlarmApiCallback<java.util.Map<String, String>>() {
+            @Override
+            public void onSuccess(java.util.Map<String, String> response) {
+                algorithmDict.clear();
+                algorithmDict.putAll(response);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Log.w(TAG, "加载算法字典失败: " + errorMessage);
+            }
+        });
     }
 
     private void createNotificationChannel() {
@@ -214,8 +276,25 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
         //设置RecyclerView布局管理器
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        //初始化适配器
-        alarmAdapter = new AlarmAdapter(alarmList, this);
+        //初始化新的适配器
+        alarmAdapter = new AlarmAdapterNew(alarmList, new AlarmAdapterNew.OnAlarmClickListener() {
+            @Override
+            public void onAlarmClick(AlarmItem alarm) {
+                AlarmDetailDialogNew dialog = AlarmDetailDialogNew.newInstance(alarm);
+                dialog.show(getChildFragmentManager(), "AlarmDetailDialogNew");
+            }
+
+            @Override
+            public void onAlarmLongClick(AlarmItem alarm) {
+                showQuickProcessDialog(alarm);
+            }
+
+            @Override
+            public void onStatusChanged(int position, AlarmItem alarm) {
+                // 状态改变后刷新该项
+                alarmAdapter.notifyItemChanged(position);
+            }
+        });
         recyclerView.setAdapter(alarmAdapter);
 
         // 【关键修改点】：必须使用 addOnScrollListener 包裹住里面的 onScrolled 方法
@@ -248,14 +327,13 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
     private void refreshData() {
         currentPage = 1;
         isLastPage = false;
-        // 如果你有筛选条件，请在这里把 null 换成你的变量
-        getAlertsBundle(null, currentPage, pageSize);
+        loadAlarmDataFromAPI();
     }
 
     // 上拉加载专用：页码 +1
     private void loadMoreData() {
         currentPage++;
-        getAlertsBundle(null, currentPage, pageSize);
+        loadAlarmDataFromAPI();
     }
 
     private void setupSearchView() {
@@ -282,157 +360,111 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
     }
 
     private void loadAlarmData() {
-        // 调用API获取真实数据，默认都为空
-        getAlertsBundle(null, 1, 20);
+        // 调用新API获取报警数据
+        loadAlarmDataFromAPI();
     }
 
     /**
-     * 从API获取报警数据
-     *
-     * @param camera_id 可选，按摄像机ID筛选
-     * @param page      可选，分页页码
-     * @param limitNum  可选，每页条数（最大500）
+     * 使用新API加载报警数据
      */
-    private void getAlertsBundle(Integer camera_id, Integer page, Integer limitNum) {
-        if (isLoading) return; // 正在加载中，直接返回，防止重复请求
+    private void loadAlarmDataFromAPI() {
+        if (isLoading) return;
         isLoading = true;
 
-        // 只有加载第一页且没有在下拉刷新时，才显示加载圈（避免加载更多时屏幕闪烁）
-        if (page == 1 && !swipeRefreshLayout.isRefreshing()) {
+        if (currentPage == 1 && !swipeRefreshLayout.isRefreshing()) {
             swipeRefreshLayout.setRefreshing(true);
         }
 
-        // 1. 配置 OkHttp (超时设为60秒，解决超时问题的核心)
-        OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .retryOnConnectionFailure(true)
-                .build();
+        AlarmApiService.AlarmListRequest request = new AlarmApiService.AlarmListRequest(currentPage, pageSize);
+        request.device_name = selectedDeviceName;
+        request.region = selectedRegion;
+        request.scene = selectedScene;
+        request.algorithm = selectedAlgorithm;
+        request.process_status = selectedProcessStatus;
+        request.begin_time = selectedBeginTime;
+        request.end_time = selectedEndTime;
 
-        // 2. URL 构建
-        String baseUrl = "http://" + globalIP + ":5004/data/alerts_bundle";
-        StringBuilder urlBuilder = new StringBuilder(baseUrl);
-        boolean firstParam = true;
-
-        if (camera_id != null) {
-            urlBuilder.append(firstParam ? "?" : "&").append("camera_id=").append(camera_id);
-            firstParam = false;
-        }
-        urlBuilder.append(firstParam ? "?" : "&").append("page=").append(page);
-        firstParam = false;
-        urlBuilder.append("&limitNum=").append(limitNum);
-
-        Request request = new Request.Builder().url(urlBuilder.toString()).get().build();
-
-        // 3. 异步请求
-        client.newCall(request).enqueue(new Callback() {
+        alarmApiService.getAlarmList(request, new AlarmApiService.AlarmApiCallback<AlarmApiService.AlarmListResponse>() {
             @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                isLoading = false;
+            public void onSuccess(AlarmApiService.AlarmListResponse response) {
                 new Handler(Looper.getMainLooper()).post(() -> {
+                    isLoading = false;
                     if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
-                    if (currentPage > 1) currentPage--; // 失败回退页码
 
-                    String err = (e instanceof java.net.SocketTimeoutException) ? "请求超时" : "网络错误";
-                    Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show();
+                    if (response.data != null && response.data.results != null) {
+                        List<AlarmItem> newItems = response.data.results;
+                        totalAlarmCount = response.data.count;
+
+                        if (currentPage == 1) {
+                            alarmList.clear();
+                            alarmList.addAll(newItems);
+                            alarmAdapter.notifyDataSetChanged();
+                        } else {
+                            int startPos = alarmList.size();
+                            alarmList.addAll(newItems);
+                            alarmAdapter.notifyItemRangeInserted(startPos, newItems.size());
+                        }
+
+                        if (newItems.size() < pageSize) {
+                            isLastPage = true;
+                            Toast.makeText(requireContext(), "没有更多数据了", Toast.LENGTH_SHORT).show();
+                        } else {
+                            isLastPage = false;
+                        }
+                    }
                 });
             }
 
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                try (ResponseBody responseBody = response.body()) {
-                    if (response.isSuccessful() && responseBody != null) {
-                        String jsonString = responseBody.string();
-                        // 使用 new JsonParser().parse() 代替 parseString()
-                        JsonObject jsonResponse = new JsonParser().parse(jsonString).getAsJsonObject();
+            public void onError(String errorMessage) {
+                isLoading = false;
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+                    if (currentPage > 1) currentPage--;
 
-                        if (jsonResponse.has("code") && jsonResponse.get("code").getAsInt() == 0) {
-                            JsonObject data = jsonResponse.getAsJsonObject("data");
-
-                            // 获取数据列表
-                            List<AlarmItem> newItems = new ArrayList<>();
-                            if (data.has("alerts")) {
-                                JsonArray alertsArray = data.getAsJsonArray("alerts");
-                                for (int i = 0; i < alertsArray.size(); i++) {
-                                    JsonObject alert = alertsArray.get(i).getAsJsonObject();
-                                    AlarmItem item = new AlarmItem();
-
-                                    // --- 解析字段 (直接复用你现有的解析逻辑) ---
-                                    if (alert.has("id")) item.setId(alert.get("id").getAsInt());
-                                    if (alert.has("type") && !alert.get("type").isJsonNull()) item.setType(alert.get("type").getAsString());
-                                    if (alert.has("level") && !alert.get("level").isJsonNull()) item.setLevel(alert.get("level").getAsString());
-                                    if (alert.has("path") && !alert.get("path").isJsonNull()) item.setPath(alert.get("path").getAsString());
-                                    if (alert.has("status")) item.setStatus(alert.get("status").getAsInt());
-                                    if (alert.has("camera_id") && !alert.get("camera_id").isJsonNull()) item.setCamera_id(alert.get("camera_id").getAsInt());
-                                    if (alert.has("solve_time") && !alert.get("solve_time").isJsonNull()) item.setSolve_time(alert.get("solve_time").getAsString());
-                                    if (alert.has("name") && !alert.get("name").isJsonNull()) item.setName(alert.get("name").getAsString());
-                                    if (alert.has("location") && !alert.get("location").isJsonNull()) item.setLocation(alert.get("location").getAsString());
-                                    // ... 请在此处补充其他字段的解析 ...
-
-                                    newItems.add(item);
-                                }
-                            }
-
-                            // --- 切回主线程更新 UI ---
-                            new Handler(Looper.getMainLooper()).post(() -> {
-                                if (page == 1) {
-                                    // 第一页：清空旧数据，重新显示
-                                    alarmList.clear();
-                                    alarmList.addAll(newItems);
-                                    alarmAdapter.notifyDataSetChanged();
-                                } else {
-                                    // 加载更多：追加数据
-                                    int startPos = alarmList.size();
-                                    alarmList.addAll(newItems);
-                                    alarmAdapter.notifyItemRangeInserted(startPos, newItems.size());
-                                }
-
-                                // 判断是否还有更多数据
-                                if (newItems.size() < pageSize) {
-                                    isLastPage = true;
-                                    Toast.makeText(requireContext(), "没有更多数据了", Toast.LENGTH_SHORT).show();
-                                } else {
-                                    isLastPage = false;
-                                }
-
-                                isLoading = false;
-                                if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
-
-                                // 如果你有 applyFilters() 筛选逻辑，建议在这里调用
-                                // applyFilters();
-                            });
+                    // 尝试加载缓存数据（离线模式）
+                    if (currentPage == 1) {
+                        AlarmApiService.AlarmListResponse cached = alarmApiService.getCachedData();
+                        if (cached != null && cached.data != null && cached.data.results != null) {
+                            Toast.makeText(requireContext(), "网络离线，显示缓存数据", Toast.LENGTH_SHORT).show();
+                            alarmList.clear();
+                            alarmList.addAll(cached.data.results);
+                            alarmAdapter.notifyDataSetChanged();
                         } else {
-                            // 业务报错
-                            isLoading = false;
-                            new Handler(Looper.getMainLooper()).post(() -> {
-                                if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
-                            });
+                            Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        isLoading = false;
+                        Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show();
                     }
-                } catch (Exception e) {
-                    isLoading = false;
-                    Log.e(TAG, "解析异常", e);
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
-                        if (currentPage > 1) currentPage--;
-                    });
-                }
+                });
             }
         });
     }
 
+    // ========== 筛选相关方法 ==========
+
     @Override
     public void onFilterChanged(String alarmType, String alarmLevel, String status, String location) {
-        selectedAlarmType = alarmType;
-        selectedAlarmLevel = alarmLevel;
-        selectedStatus = status;
-        selectedLocation = location;
-        applyFilters();
+        // 更新筛选条件
+        selectedDeviceName = alarmType;
+        selectedProcessStatus = parseStatus(status);
+
+        // 重置分页并重新加载数据
+        currentPage = 1;
+        isLastPage = false;
+        loadAlarmDataFromAPI();
     }
 
-    // 修改filterAlarms方法，使用新的筛选字段
+    private int parseStatus(String status) {
+        if (status.isEmpty() || status.equals("全部")) return -1;
+        switch (status) {
+            case "未处理": return 0;
+            case "已处理": return 1;
+            case "误报": return 2;
+            default: return -1;
+        }
+    }
+
     private void filterAlarms(String query) {
         filteredList.clear();
 
@@ -441,29 +473,9 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
 
             // 搜索关键词匹配
             if (!query.isEmpty()) {
-                matches = (alarm.getName() != null && alarm.getName().toLowerCase().contains(query.toLowerCase())) ||
-                        (alarm.getType() != null && alarm.getType().toLowerCase().contains(query.toLowerCase())) ||
-                        (alarm.getLocation() != null && alarm.getLocation().toLowerCase().contains(query.toLowerCase()));
-            }
-
-            // 应用新的筛选条件
-            if (matches && !selectedAlarmType.isEmpty()) {
-                matches = alarm.getType() != null && alarm.getType().equals(selectedAlarmType);
-            }
-            if (matches && !selectedAlarmLevel.isEmpty()) {
-                // 将levelConstant从int改为String类型，直接使用字符串匹配
-                String levelConstant = AlarmItem.LEVEL_WARNING;
-                if (selectedAlarmLevel.equals("严重")) {
-                    levelConstant = AlarmItem.LEVEL_CRITICAL;
-                }
-                matches = levelConstant.equals(alarm.getLevel());
-            }
-            if (matches && !selectedStatus.isEmpty()) {
-                String statusDesc = alarm.getStatusDescription();
-                matches = statusDesc != null && statusDesc.equals(selectedStatus);
-            }
-            if (matches && !selectedLocation.isEmpty()) {
-                matches = alarm.getLocation() != null && alarm.getLocation().equals(selectedLocation);
+                matches = (alarm.getDevice_name() != null && alarm.getDevice_name().toLowerCase().contains(query.toLowerCase())) ||
+                        (alarm.getDetect_target() != null && alarm.getDetect_target().toLowerCase().contains(query.toLowerCase())) ||
+                        (alarm.getRegion_name() != null && alarm.getRegion_name().toLowerCase().contains(query.toLowerCase()));
             }
 
             if (matches) {
@@ -474,26 +486,28 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
         alarmAdapter.notifyDataSetChanged();
     }
 
-    // 添加缺失的applyFilters方法
     private void applyFilters() {
         filterAlarms(searchView.getQuery().toString());
     }
 
-    // 修改clearFilters方法
     private void clearFilters() {
-        // 清空新的筛选字段
-        selectedAlarmType = "";
-        selectedAlarmLevel = "";
-        selectedStatus = "";
-        selectedLocation = "";
+        selectedDeviceName = "";
+        selectedRegion = 0;
+        selectedScene = 0;
+        selectedAlgorithm = 0;
+        selectedProcessStatus = -1;
+        selectedBeginTime = "";
+        selectedEndTime = "";
         applyFilters();
+        currentPage = 1;
+        loadAlarmDataFromAPI();
         Toast.makeText(requireContext(), "筛选条件已清空", Toast.LENGTH_SHORT).show();
     }
 
     // 修改showFilterDialog方法
     private void showFilterDialog() {
         FilterDialog dialog = FilterDialog.newInstance(
-                selectedAlarmType, selectedAlarmLevel, selectedStatus, selectedLocation);
+                "", "", "", "");
         dialog.setOnFilterChangeListener(this); // 设置监听器
         dialog.show(getChildFragmentManager(), "FilterDialog");
     }
@@ -568,35 +582,20 @@ public class AlarmFragment extends Fragment implements AlarmAdapter.OnAlarmClick
         Toast.makeText(requireContext(), "严重报警！已触发应急响应", Toast.LENGTH_LONG).show();
     }
 
-    // AlarmAdapter.OnAlarmClickListener 实现
-    @Override
-    public void onAlarmClick(AlarmItem alarm) {
-        // 跳转到报警详情页
-        AlarmDetailDialog dialog = AlarmDetailDialog.newInstance(alarm);
-        dialog.show(getChildFragmentManager(), "AlarmDetailDialog");
-    }
-
-    @Override
-    public void onAlarmLongClick(AlarmItem alarm) {
-        // 长按显示快速处理选项
-        showQuickProcessDialog(alarm);
-    }
-
     private void showQuickProcessDialog(AlarmItem alarm) {
         androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
         builder.setTitle("快速处理")
-                .setItems(new String[]{"标记为已处理", "标记为处理中", "查看详情"}, (dialog, which) -> {
+                .setItems(new String[]{"标记为已处理", "标记为误报", "查看详情"}, (dialog, which) -> {
                     switch (which) {
                         case 0:
-                            alarm.setStatus(AlarmItem.STATUS_PROCESSED);
+                            alarm.setProcess_status(AlarmItem.STATUS_PROCESSED);
                             break;
                         case 1:
-                            // 注意：新的AlarmItem只有两种状态，这里可能需要额外处理
-                            // 暂时也标记为已处理
-                            alarm.setStatus(AlarmItem.STATUS_PROCESSED);
+                            alarm.setProcess_status(AlarmItem.STATUS_FALSE_ALARM);
                             break;
                         case 2:
-                            onAlarmClick(alarm);
+                            AlarmDetailDialogNew detailDialog = AlarmDetailDialogNew.newInstance(alarm);
+                            detailDialog.show(getChildFragmentManager(), "AlarmDetailDialogNew");
                             break;
                     }
                     alarmAdapter.notifyDataSetChanged();

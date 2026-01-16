@@ -15,39 +15,47 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
+
+import com.bumptech.glide.Glide;
 import com.example.mineguard.R;
 import com.example.mineguard.alarm.model.AlarmItem;
 import com.example.mineguard.api.AlarmApiService;
 import com.example.mineguard.api.ApiConfig;
-import com.bumptech.glide.Glide;
-import java.io.File;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.util.Log;
 import androidx.core.content.ContextCompat;
 
 /**
- * 报警详情对话框
+ * 新版报警详情对话框 - 适配API数据结构
  */
-public class AlarmDetailDialog extends DialogFragment {
-    
+public class AlarmDetailDialogNew extends DialogFragment {
+
+    private static final String TAG = "AlarmDetailDialogNew";
+    private static final int REQUEST_STORAGE_PERMISSION = 1;
+
     private ImageView imageView;
-    private TextView tvLevel;
+    private TextView tvStatus;
+    private TextView tvAlarmId;
+    private TextView tvAlarmType;
     private TextView tvDeviceName;
-    private TextView tvAlgorithmType;
     private TextView tvScene;
     private TextView tvArea;
-    private TextView tvTime;
-    private TextView tvStatus;
-    private TextView tvProcessInfo;
-    private TextView tvProcessor;
+    private TextView tvOccurTime;
     private TextView tvProcessTime;
+    private TextView tvResponsiblePerson;
+    private TextView tvResponsibleUnit;
+    private TextView tvProcessInfo;
+    private TextView tvProcessUser;
     private EditText etProcessInfo;
     private Button btnSave;
     private Button btnExport;
@@ -57,8 +65,8 @@ public class AlarmDetailDialog extends DialogFragment {
     private AlarmItem alarm;
     private AlarmApiService alarmApiService;
 
-    public static AlarmDetailDialog newInstance(AlarmItem alarm) {
-        AlarmDetailDialog dialog = new AlarmDetailDialog();
+    public static AlarmDetailDialogNew newInstance(AlarmItem alarm) {
+        AlarmDetailDialogNew dialog = new AlarmDetailDialogNew();
         Bundle args = new Bundle();
         args.putSerializable("alarm", alarm);
         dialog.setArguments(args);
@@ -81,80 +89,55 @@ public class AlarmDetailDialog extends DialogFragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.dialog_alarm_detail, container, false);
-        
+        View view = inflater.inflate(R.layout.dialog_alarm_detail_new, container, false);
+
         initViews(view);
         setupData();
         setupClickListeners();
-        
+
         return view;
     }
 
     private void initViews(View view) {
         imageView = view.findViewById(R.id.imageView);
-        tvLevel = view.findViewById(R.id.tvLevel);
+        tvStatus = view.findViewById(R.id.tvStatus);
+        tvAlarmId = view.findViewById(R.id.tvAlarmId);
+        tvAlarmType = view.findViewById(R.id.tvAlarmType);
         tvDeviceName = view.findViewById(R.id.tvDeviceName);
-        tvAlgorithmType = view.findViewById(R.id.tvAlgorithmType);
         tvScene = view.findViewById(R.id.tvScene);
         tvArea = view.findViewById(R.id.tvArea);
-        tvTime = view.findViewById(R.id.tvTime);
-        tvStatus = view.findViewById(R.id.tvStatus);
-        tvProcessInfo = view.findViewById(R.id.tvProcessInfo);
-        tvProcessor = view.findViewById(R.id.tvProcessor);
+        tvOccurTime = view.findViewById(R.id.tvOccurTime);
         tvProcessTime = view.findViewById(R.id.tvProcessTime);
+        tvResponsiblePerson = view.findViewById(R.id.tvResponsiblePerson);
+        tvResponsibleUnit = view.findViewById(R.id.tvResponsibleUnit);
+        tvProcessInfo = view.findViewById(R.id.tvProcessInfo);
+        tvProcessUser = view.findViewById(R.id.tvProcessUser);
         etProcessInfo = view.findViewById(R.id.etProcessInfo);
         btnSave = view.findViewById(R.id.btnSave);
         btnExport = view.findViewById(R.id.btnExport);
         btnViewVideo = view.findViewById(R.id.btnViewVideo);
         btnClose = view.findViewById(R.id.btnClose);
-
-        // 如果没有视频，隐藏查看视频按钮
-        if (btnViewVideo != null) {
-            btnViewVideo.setVisibility(View.GONE);
-        }
     }
-    
+
     private void setupData() {
         if (alarm == null) return;
 
-        // 获取服务器IP
-        String serverIp = getServerIp();
-
-        // 设置图片 - 使用alarm_pic_url字段
+        // 1. 加载图片
         String picUrl = alarm.getAlarm_pic_url();
         if (picUrl != null && !picUrl.isEmpty()) {
             Glide.with(this)
-                 .load(picUrl)
-                 .placeholder(android.R.drawable.ic_dialog_alert)
-                 .error(android.R.drawable.ic_dialog_alert)
-                 .into(imageView);
+                    .load(picUrl)
+                    .fitCenter()
+                    .placeholder(R.drawable.placeholder)
+                    .error(R.drawable.placeholder)
+                    .into(imageView);
         } else {
-            imageView.setImageResource(android.R.drawable.ic_dialog_alert);
+            imageView.setImageResource(R.drawable.placeholder);
         }
 
-        // 设置报警级别（默认为警告级别）
-        tvLevel.setText("警告");
-        tvLevel.setTextColor(0xFFFFA726);
-        tvLevel.setBackgroundResource(R.drawable.bg_level_warning);
-
-        // 设备名称
-        tvDeviceName.setText(alarm.getDevice_name() != null ? alarm.getDevice_name() : "未知设备");
-
-        // 报警类型
-        tvAlgorithmType.setText(alarm.getDetect_target() != null ? alarm.getDetect_target() : "未知类型");
-
-        // 场景名称
-        tvScene.setText(alarm.getScene_name() != null ? alarm.getScene_name() : "未知场景");
-
-        // 区域名称
-        tvArea.setText(alarm.getRegion_name() != null ? alarm.getRegion_name() : "未知区域");
-
-        // 报警时间
-        tvTime.setText(alarm.getOccur_time() != null ? alarm.getOccur_time() : "未知时间");
-
-        // 设置状态
-        int statusValue = alarm.getProcess_status();
-        switch (statusValue) {
+        // 2. 设置状态
+        int processStatus = alarm.getProcess_status();
+        switch (processStatus) {
             case 1:
                 tvStatus.setText("已处理");
                 tvStatus.setTextColor(0xFF43A047);
@@ -173,9 +156,58 @@ public class AlarmDetailDialog extends DialogFragment {
                 break;
         }
 
-        // 设置处理信息
-        if (alarm.getProcess_desc() != null && !alarm.getProcess_desc().isEmpty()) {
-            tvProcessInfo.setText(alarm.getProcess_desc());
+        // 3. 基本信息
+        tvAlarmId.setText(String.valueOf(alarm.getId()));
+
+        String detectTarget = alarm.getDetect_target();
+        tvAlarmType.setText(detectTarget != null && !detectTarget.isEmpty() ? detectTarget : "未知类型");
+
+        String deviceName = alarm.getDevice_name();
+        tvDeviceName.setText(deviceName != null && !deviceName.isEmpty() ? deviceName : "未知设备");
+
+        String sceneName = alarm.getScene_name();
+        tvScene.setText(sceneName != null && !sceneName.isEmpty() ? sceneName : "未知场景");
+
+        String regionName = alarm.getRegion_name();
+        tvArea.setText(regionName != null && !regionName.isEmpty() ? regionName : "未知区域");
+
+        // 4. 时间信息
+        String occurTime = alarm.getOccur_time();
+        if (occurTime != null && !occurTime.isEmpty()) {
+            tvOccurTime.setText(formatDateTime(occurTime));
+        } else {
+            tvOccurTime.setText("未知时间");
+        }
+
+        String processTime = alarm.getProcess_time();
+        if (processTime != null && !processTime.isEmpty()) {
+            tvProcessTime.setText(formatDateTime(processTime));
+            tvProcessTime.setVisibility(View.VISIBLE);
+        } else {
+            tvProcessTime.setVisibility(View.GONE);
+        }
+
+        // 5. 责任信息
+        String responsiblePerson = alarm.getResponsible_person();
+        if (responsiblePerson != null && !responsiblePerson.isEmpty()) {
+            tvResponsiblePerson.setText(responsiblePerson);
+            tvResponsiblePerson.setVisibility(View.VISIBLE);
+        } else {
+            tvResponsiblePerson.setVisibility(View.GONE);
+        }
+
+        String responsibleUnit = alarm.getResponsible_unit();
+        if (responsibleUnit != null && !responsibleUnit.isEmpty()) {
+            tvResponsibleUnit.setText(responsibleUnit);
+            tvResponsibleUnit.setVisibility(View.VISIBLE);
+        } else {
+            tvResponsibleUnit.setVisibility(View.GONE);
+        }
+
+        // 6. 处理信息
+        String processDesc = alarm.getProcess_desc();
+        if (processDesc != null && !processDesc.isEmpty()) {
+            tvProcessInfo.setText(processDesc);
             tvProcessInfo.setVisibility(View.VISIBLE);
             etProcessInfo.setVisibility(View.GONE);
             btnSave.setText("修改处理信息");
@@ -185,31 +217,34 @@ public class AlarmDetailDialog extends DialogFragment {
             btnSave.setText("保存处理信息");
         }
 
-        // 设置处理人
-        if (alarm.getProcess_user() != null && !alarm.getProcess_user().isEmpty()) {
-            tvProcessor.setText("处理人: " + alarm.getProcess_user());
-            tvProcessor.setVisibility(View.VISIBLE);
+        String processUser = alarm.getProcess_user();
+        if (processUser != null && !processUser.isEmpty()) {
+            tvProcessUser.setText("处理人: " + processUser);
+            tvProcessUser.setVisibility(View.VISIBLE);
         } else {
-            tvProcessor.setVisibility(View.GONE);
+            tvProcessUser.setVisibility(View.GONE);
         }
 
-        // 设置处理时间
-        if (alarm.getProcess_time() != null && !alarm.getProcess_time().isEmpty()) {
-            tvProcessTime.setText("处理时间: " + alarm.getProcess_time());
-            tvProcessTime.setVisibility(View.VISIBLE);
-        } else {
-            tvProcessTime.setVisibility(View.GONE);
-        }
-
-        // 显示查看视频按钮（如果有视频）
-        if (alarm.getAlarm_video() != null && !alarm.getAlarm_video().isEmpty() && btnViewVideo != null) {
+        // 7. 显示视频按钮（如果有视频）
+        String alarmVideo = alarm.getAlarm_video();
+        if (alarmVideo != null && !alarmVideo.isEmpty()) {
             btnViewVideo.setVisibility(View.VISIBLE);
+        } else {
+            btnViewVideo.setVisibility(View.GONE);
         }
     }
 
-    private String getServerIp() {
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(ApiConfig.PREF_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(ApiConfig.KEY_SERVER_IP, ApiConfig.DEFAULT_SERVER_IP);
+    private String formatDateTime(String dateTime) {
+        try {
+            // 移除T字符（ISO格式）
+            String formatted = dateTime.replace("T", " ");
+            if (formatted.length() > 19) {
+                formatted = formatted.substring(0, 19);
+            }
+            return formatted;
+        } catch (Exception e) {
+            return dateTime;
+        }
     }
 
     private void setupClickListeners() {
@@ -217,54 +252,13 @@ public class AlarmDetailDialog extends DialogFragment {
         btnExport.setOnClickListener(v -> exportImage());
         btnClose.setOnClickListener(v -> dismiss());
 
-        // 点击图片查看大图
-        imageView.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "图片查看功能", Toast.LENGTH_SHORT).show();
-        });
-
-        // 查看视频按钮
         if (btnViewVideo != null) {
             btnViewVideo.setOnClickListener(v -> viewVideo());
         }
-    }
 
-    /**
-     * 查看报警视频
-     */
-    private void viewVideo() {
-        if (alarm == null || alarm.getAlarm_video() == null || alarm.getAlarm_video().isEmpty()) {
-            Toast.makeText(getContext(), "没有可查看的视频", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // 调用API获取视频地址
-        alarmApiService.getAlarmVideo(alarm.getId(), new AlarmApiService.AlarmApiCallback<AlarmApiService.VideoResponse>() {
-            @Override
-            public void onSuccess(AlarmApiService.VideoResponse response) {
-                if (response.data != null && !response.data.isEmpty()) {
-                    String videoUrl = response.data.get(0).address;
-                    // 这里可以跳转到视频播放页面或使用系统播放器
-                    Toast.makeText(getContext(), "视频地址: " + videoUrl, Toast.LENGTH_SHORT).show();
-
-                    // 使用Intent打开系统播放器
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(Uri.parse(videoUrl), "video/*");
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
-                    } catch (Exception e) {
-                        Log.e("AlarmDetailDialog", "打开视频失败", e);
-                        Toast.makeText(getContext(), "无法播放视频", Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Toast.makeText(getContext(), "视频地址获取失败", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Toast.makeText(getContext(), "获取视频失败: " + errorMessage, Toast.LENGTH_SHORT).show();
-            }
+        // 点击图片查看大图
+        imageView.setOnClickListener(v -> {
+            Toast.makeText(getContext(), "图片查看功能", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -275,36 +269,27 @@ public class AlarmDetailDialog extends DialogFragment {
             return;
         }
 
-        // 更新报警信息
         alarm.setProcess_desc(processInfo);
-        alarm.setProcess_time(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(System.currentTimeMillis())));
+        alarm.setProcess_time(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date()));
         alarm.setProcess_status(AlarmItem.STATUS_PROCESSED);
 
-        // 刷新显示
         setupData();
-
         Toast.makeText(getContext(), "处理信息已保存", Toast.LENGTH_SHORT).show();
     }
 
-    private static final int REQUEST_STORAGE_PERMISSION = 1;
-
     private void exportImage() {
-        // 检查并请求存储权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !hasStoragePermission()) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     REQUEST_STORAGE_PERMISSION);
             return;
         }
 
-        // 调用API获取图片地址
         alarmApiService.getAlarmPicture(alarm.getId(), new AlarmApiService.AlarmApiCallback<AlarmApiService.PictureResponse>() {
             @Override
             public void onSuccess(AlarmApiService.PictureResponse response) {
                 if (response.data != null && !response.data.isEmpty()) {
-                    String imageUrl = response.data.get(0).address;
-                    downloadImage(imageUrl);
+                    downloadImage(response.data.get(0).address);
                 } else {
-                    // 如果API没有返回，尝试使用alarm_pic_url
                     String picUrl = alarm.getAlarm_pic_url();
                     if (picUrl != null && !picUrl.isEmpty()) {
                         downloadImage(picUrl);
@@ -316,7 +301,6 @@ public class AlarmDetailDialog extends DialogFragment {
 
             @Override
             public void onError(String errorMessage) {
-                // API调用失败，尝试使用本地缓存的URL
                 String picUrl = alarm.getAlarm_pic_url();
                 if (picUrl != null && !picUrl.isEmpty()) {
                     downloadImage(picUrl);
@@ -341,38 +325,66 @@ public class AlarmDetailDialog extends DialogFragment {
             request.setAllowedOverRoaming(true);
             request.setMimeType("image/jpeg");
 
-            long downloadId = downloadManager.enqueue(request);
+            downloadManager.enqueue(request);
             Toast.makeText(getContext(), "图片导出中，请查看通知栏", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Log.e("AlarmDetailDialog", "导出图片失败", e);
+            Log.e(TAG, "导出图片失败", e);
             Toast.makeText(getContext(), "图片导出失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
-    
-    // 检查是否有存储权限
+
+    private void viewVideo() {
+        if (alarm == null || alarm.getAlarm_video() == null || alarm.getAlarm_video().isEmpty()) {
+            Toast.makeText(getContext(), "没有可查看的视频", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        alarmApiService.getAlarmVideo(alarm.getId(), new AlarmApiService.AlarmApiCallback<AlarmApiService.VideoResponse>() {
+            @Override
+            public void onSuccess(AlarmApiService.VideoResponse response) {
+                if (response.data != null && !response.data.isEmpty()) {
+                    String videoUrl = response.data.get(0).address;
+                    playVideo(videoUrl);
+                } else {
+                    Toast.makeText(getContext(), "视频地址获取失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Toast.makeText(getContext(), "获取视频失败: " + errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void playVideo(String videoUrl) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(Uri.parse(videoUrl), "video/*");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "播放视频失败", e);
+            Toast.makeText(getContext(), "无法播放视频", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private boolean hasStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11及以上版本
             return Environment.isExternalStorageManager();
         } else {
-            // Android 10及以下版本
             return ContextCompat.checkSelfPermission(requireContext(),
                     Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
         }
     }
-    
-    // 处理权限请求结果
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                     @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_STORAGE_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 权限被授予，再次尝试导出
-                exportImage();
-            } else {
-                Toast.makeText(getContext(), "需要存储权限才能导出图片", Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode == REQUEST_STORAGE_PERMISSION && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            exportImage();
+        } else {
+            Toast.makeText(getContext(), "需要存储权限才能导出图片", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -380,8 +392,7 @@ public class AlarmDetailDialog extends DialogFragment {
     public void onStart() {
         super.onStart();
         if (getDialog() != null && getDialog().getWindow() != null) {
-            // 设置对话框宽度为屏幕宽度的90%
-            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9);
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.95);
             getDialog().getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
     }
