@@ -196,3 +196,41 @@ message	string	是	否	响应提示信息
 data	object	是	否	响应信息
 算法id: 算法名称		是	否	算法id和算法名称的键值对
 
+
+WebSocket接口
+获取最新报警信息推送及设备信息推送
+URL：/ws/mobile/push/infos/(user_id)/
+URL说明：user_id为登录后获取到的用户id
+返回参数格式：json
+
+1、最新报警信息
+标识字符：new_alarm
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+alarm_time	string	是	否	报警时间
+device_name	string	是	是	报警设备名称
+scene	string	是	是	报警场景名称
+region	string	是	是	报警区域名称
+algorithm	string	是	是	报警算法名称
+alarm_pic	string	是	是	报警图片路径
+
+2、设备及流信息
+标识字符：dev_infos
+返回参数：
+字段名称	类型	是否必有	可以为空	说明
+scene_info	array	是	是	场景信息
+  scene_id	int	是	是	场景id
+scene_name	string	是	是	场景名称
+region_info	array	是	是	区域信息
+region_id	int	是	是	区域id
+region_name	string	是	是	区域名称
+scene_id	int	是	是	所属场景id
+device_info	array	是	是	设备信息
+device_id	int	是	是	设备id
+device_name	string	是	是	设备名称
+scene_id	int	是	是	所属场景id
+region_id	int	是	是	所属区域id
+rtsp	string	是	是	rtsp流地址
+rtsp2	string	是	是	rtsp流地址，个别相机有两通道流，如热成像相机，rtsp2为热成像通道流地址
+online	int	是	是	当前是否在线，0-不在线，1-在线
+enable	bool	是	是	设防状态，true-设防，false-撤防

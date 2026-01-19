@@ -19,6 +19,7 @@ import com.example.mineguard.api.ApiConfig;
 import com.example.mineguard.api.AuthService;
 import com.example.mineguard.api.PreferencesManager;
 import com.example.mineguard.data.LoginResponse;
+import com.example.mineguard.websocket.AlarmWebSocketService;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -208,12 +209,32 @@ public class LoginActivity extends AppCompatActivity {
         // 显示登录成功消息
         if (response.isBackdoorLogin()) {
             showToast("登录成功（离线模式）");
+
+            // 离线模式：延迟后发送模拟报警通知
+            btnLogin.postDelayed(() -> {
+                AlarmWebSocketService.triggerOfflineAlarmNotification(LoginActivity.this);
+            }, 3000); // 3秒后发送模拟通知
         } else {
             showToast("登录成功");
+
+            // 在线模式：启动 WebSocket 服务
+            startWebSocketService();
         }
 
         // 跳转到主界面
         navigateToMain();
+    }
+
+    /**
+     * 启动 WebSocket 服务
+     */
+    private void startWebSocketService() {
+        Intent serviceIntent = new Intent(this, AlarmWebSocketService.class);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
     }
 
     /**

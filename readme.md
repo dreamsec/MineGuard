@@ -5,4 +5,7 @@
 - Min Android Version 13.0
 - Pixel 6 虚拟机
 
-同步gradle后，应该能一键运行
+同步gradle一键运行  
+离线模式下，初始用户名与密码：  
+admin  
+admin123

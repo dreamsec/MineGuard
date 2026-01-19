@@ -38,6 +38,20 @@
         <activity
                 android:name=".MainActivity2"
                 android:exported="false"/>
+
+        <!-- 报警详情页面 -->
+        <activity
+                android:name=".alarm.AlarmDetailActivity"
+                android:exported="false"
+                android:screenOrientation="portrait"/>
+
+        <!-- WebSocket 报警推送服务 -->
+        <service
+                android:name=".websocket.AlarmWebSocketService"
+                android:enabled="true"
+                android:exported="false"
+                android:foregroundServiceType="dataSync"/>
+
     </application>
 
 </manifest>

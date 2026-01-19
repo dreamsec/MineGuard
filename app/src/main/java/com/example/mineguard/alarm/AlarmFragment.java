@@ -66,6 +66,11 @@ import okhttp3.ResponseBody;  // 添加这一行
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 
+// 广播接收器
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.content.Context;
+
 /**
  * 报警管理Fragment
  * 实现实时报警推送、应急策略、报警信息查询和报警详情功能
@@ -117,6 +122,12 @@ public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChan
     private boolean isLoading = false; // 是否正在加载中（防止重复请求）
     private boolean isLastPage = false; // 是否已加载完所有数据
 
+    // Gson 实例用于 JSON 解析
+    private Gson gson;
+
+    // WebSocket 报警更新广播接收器
+    private BroadcastReceiver alarmUpdateReceiver;
+
     public AlarmFragment() {
         // Required empty public constructor
     }
@@ -140,6 +151,66 @@ public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChan
 
         initializeServices();
         createNotificationChannel();
+        registerAlarmUpdateReceiver();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (ringtone != null) {
+            if (ringtone.isPlaying()) {
+                ringtone.stop();
+            }
+            ringtone = null;
+        }
+
+        // 注销广播接收器
+        if (alarmUpdateReceiver != null) {
+            requireContext().unregisterReceiver(alarmUpdateReceiver);
+        }
+    }
+
+    /**
+     * 注册报警更新广播接收器
+     */
+    private void registerAlarmUpdateReceiver() {
+        alarmUpdateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("com.example.mineguard.ALARM_UPDATE".equals(intent.getAction())) {
+                    String alarmJson = intent.getStringExtra("alarm_data");
+                    if (alarmJson != null) {
+                        // 解析报警数据
+                        AlarmItem newAlarm = gson.fromJson(alarmJson, AlarmItem.class);
+
+                        // 将新报警添加到列表顶部
+                        alarmList.add(0, newAlarm);
+                        alarmAdapter.notifyItemInserted(0);
+
+                        // 滚动到顶部
+                        if (recyclerView != null) {
+                            recyclerView.smoothScrollToPosition(0);
+                        }
+
+                        // 显示提示
+                        Toast.makeText(context,
+                                "收到新报警: " + newAlarm.getDevice_name(),
+                                Toast.LENGTH_SHORT).show();
+
+                        Log.d(TAG, "收到 WebSocket 报警更新: " + newAlarm.getDevice_name());
+                    }
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter("com.example.mineguard.ALARM_UPDATE");
+
+        // Android 14+ 需要指定 RECEIVER_EXPORTED 或 RECEIVER_NOT_EXPORTED
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requireContext().registerReceiver(alarmUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            requireContext().registerReceiver(alarmUpdateReceiver, filter);
+        }
     }
 
     @Override
@@ -173,6 +244,9 @@ public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChan
         notificationManager = (NotificationManager) requireContext().getSystemService(Context.NOTIFICATION_SERVICE);
         vibrator = (Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
         preferences = requireContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+
+        // 初始化 Gson 实例
+        gson = new Gson();
 
         // 初始化API服务
         alarmApiService = AlarmApiService.getInstance(requireContext());
@@ -679,16 +753,5 @@ public class AlarmFragment extends Fragment implements FilterDialog.OnFilterChan
                     alarmAdapter.notifyDataSetChanged();
                 })
                 .show();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (ringtone != null) {
-            if (ringtone.isPlaying()) {
-                ringtone.stop();
-            }
-            ringtone = null;
-        }
     }
 }
