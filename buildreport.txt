@@ -1,39 +1,5 @@
- FATAL EXCEPTION: main
-                                                                                                    Process: com.example.mineguard, PID: 8494
-                                                                                                    java.lang.SecurityException: com.example.mineguard: One of RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED should be specified when a receiver isn't being registered exclusively for system broadcasts
-                                                                                                    	at android.os.Parcel.createExceptionOrNull(Parcel.java:3340)
-                                                                                                    	at android.os.Parcel.createException(Parcel.java:3324)
-                                                                                                    	at android.os.Parcel.readException(Parcel.java:3307)
-                                                                                                    	at android.os.Parcel.readException(Parcel.java:3249)
-                                                                                                    	at android.app.IActivityManager$Stub$Proxy.registerReceiverWithFeature(IActivityManager.java:6156)
-                                                                                                    	at android.app.ContextImpl.registerReceiverInternal(ContextImpl.java:1935)
-                                                                                                    	at android.app.ContextImpl.registerReceiver(ContextImpl.java:1864)
-                                                                                                    	at android.app.ContextImpl.registerReceiver(ContextImpl.java:1852)
-                                                                                                    	at android.content.ContextWrapper.registerReceiver(ContextWrapper.java:778)
-                                                                                                    	at android.content.ContextWrapper.registerReceiver(ContextWrapper.java:778)
-                                                                                                    	at com.example.mineguard.alarm.AlarmFragment.registerAlarmUpdateReceiver(AlarmFragment.java:207)
-                                                                                                    	at com.example.mineguard.alarm.AlarmFragment.onCreate(AlarmFragment.java:154)
-                                                                                                    	at androidx.fragment.app.Fragment.performCreate(Fragment.java:3090)
-                                                                                                    	at androidx.fragment.app.FragmentStateManager.create(FragmentStateManager.java:475)
-                                                                                                    	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:257)
-                                                                                                    	at androidx.fragment.app.FragmentManager.executeOpsTogether(FragmentManager.java:1899)
-                                                                                                    	at androidx.fragment.app.FragmentManager.removeRedundantOperationsAndExecute(FragmentManager.java:1817)
-                                                                                                    	at androidx.fragment.app.FragmentManager.execPendingActions(FragmentManager.java:1760)
-                                                                                                    	at androidx.fragment.app.FragmentManager$5.run(FragmentManager.java:547)
-                                                                                                    	at android.os.Handler.handleCallback(Handler.java:995)
-                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:103)
-                                                                                                    	at android.os.Looper.loopOnce(Looper.java:248)
-                                                                                                    	at android.os.Looper.loop(Looper.java:338)
-                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:9067)
-                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
-                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
-                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
-                                                                                                    Caused by: android.os.RemoteException: Remote stack trace:
-                                                                                                    	at com.android.server.am.BroadcastController.registerReceiverWithFeatureTraced(BroadcastController.java:457)
-                                                                                                    	at com.android.server.am.BroadcastController.registerReceiverWithFeature(BroadcastController.java:254)
-                                                                                                    	at com.android.server.am.ActivityManagerService.registerReceiverWithFeature(ActivityManagerService.java:14359)
-                                                                                                    	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:2795)
-                                                                                                    	at com.android.server.am.ActivityManagerService.onTransact(ActivityManagerService.java:2735)
-                                                                                                    
-2026-01-19 13:38:13.987  8494-8494  Process                 com.example.mineguard                I  Sending signal. PID: 8494 SIG: 9
-2026-01-19 13:38:13.998   714-832   InputDispatcher         system_server                        E  channel '51e4bd com.example.mineguard/com.example.mineguard.MainActivity' ~ Channel is unrecoverably broken and will be disposed!
+H:\personal_data\android\MineGuard\app\src\main\java\com\example\mineguard\preview\RtspPlayerActivity.java:41: 错误: 找不到符号
+    private LinearLayout controlPanel;
+            ^
+  符号:   类 LinearLayout
+  位置: 类 RtspPlayerActivity

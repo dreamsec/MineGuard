@@ -2,6 +2,7 @@ package com.example.mineguard.login;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -15,11 +16,11 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mineguard.MainActivity;
 import com.example.mineguard.R;
-import com.example.mineguard.api.ApiConfig;
 import com.example.mineguard.api.AuthService;
 import com.example.mineguard.api.PreferencesManager;
 import com.example.mineguard.data.LoginResponse;
 import com.example.mineguard.websocket.AlarmWebSocketService;
+import com.example.mineguard.websocket.DeviceWebSocketService;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -229,11 +230,27 @@ public class LoginActivity extends AppCompatActivity {
      * 启动 WebSocket 服务
      */
     private void startWebSocketService() {
-        Intent serviceIntent = new Intent(this, AlarmWebSocketService.class);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
+        try {
+            // 启动报警 WebSocket 服务
+            Intent alarmServiceIntent = new Intent(this, AlarmWebSocketService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(alarmServiceIntent);
+            } else {
+                startService(alarmServiceIntent);
+            }
+
+            // 启动设备信息 WebSocket 服务
+            Intent deviceServiceIntent = new Intent(this, DeviceWebSocketService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(deviceServiceIntent);
+            } else {
+                startService(deviceServiceIntent);
+            }
+
+            android.util.Log.d("LoginActivity", "WebSocket 服务启动成功");
+        } catch (Exception e) {
+            android.util.Log.e("LoginActivity", "启动 WebSocket 服务失败", e);
+            // 不影响登录流程，仅记录错误
         }
     }
 

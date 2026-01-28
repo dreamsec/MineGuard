@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <application
             android:name=".MyApplication"
             android:usesCleartextTraffic="true"
@@ -45,9 +47,23 @@
                 android:exported="false"
                 android:screenOrientation="portrait"/>
 
+        <!-- RTSP 视频播放页面 -->
+        <activity
+                android:name=".preview.RtspPlayerActivity"
+                android:exported="false"
+                android:screenOrientation="landscape"
+                android:configChanges="orientation|screenSize"/>
+
         <!-- WebSocket 报警推送服务 -->
         <service
                 android:name=".websocket.AlarmWebSocketService"
+                android:enabled="true"
+                android:exported="false"
+                android:foregroundServiceType="dataSync"/>
+
+        <!-- WebSocket 设备信息推送服务 -->
+        <service
+                android:name=".websocket.DeviceWebSocketService"
                 android:enabled="true"
                 android:exported="false"
                 android:foregroundServiceType="dataSync"/>
